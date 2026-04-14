@@ -1,7 +1,10 @@
-terraform/modules/        @platform-ai @infra-leads
-terraform/stacks/         @platform-ai
-terraform/envs/           @platform-ai
-app/models.yaml           @platform-ai @ai-governance
-app/litellm/              @platform-ai
-.azuredevops/             @platform-ai @infra-leads
+terraform/modules/         @platform-ai @infra-leads
+terraform/stacks/          @platform-ai
+terraform/envs/            @platform-ai
+app/models.yaml            @platform-ai @ai-governance
+app/litellm/               @platform-ai
+app/digest/                @platform-ai @ai-governance
+app/digest/src/summariser.py @platform-ai @ai-governance @privacy
+app/digest/templates/      @platform-ai @ai-governance
+.azuredevops/              @platform-ai @infra-leads
 scripts/validate_models.py @platform-ai @ai-governance

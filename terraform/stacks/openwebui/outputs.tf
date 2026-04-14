@@ -19,3 +19,11 @@ output "openai_endpoint" {
 output "langfuse_internal_url" {
   value = "https://${module.langfuse.fqdn}"
 }
+
+output "digest_enabled" {
+  value = local.digest_enabled
+}
+
+output "digest_sender_address" {
+  value = try(module.communication_services[0].sender_address, null)
+}

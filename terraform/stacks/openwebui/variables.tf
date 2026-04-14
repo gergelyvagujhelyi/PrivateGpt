@@ -68,6 +68,26 @@ variable "allowed_ip_ranges" {
   default     = []
 }
 
+variable "digest_image" {
+  type        = string
+  description = "ACR image ref for the digest worker (only used when features.digest.enabled)"
+  default     = ""
+}
+
+variable "features" {
+  description = "Per-client optional features. Unset features are not provisioned."
+  type = object({
+    digest = optional(object({
+      enabled        = bool
+      daily_cron     = optional(string, "0 7 * * *")
+      weekly_cron    = optional(string, "0 7 * * MON")
+      sender_local   = optional(string, "assistant")
+      default_opt_in = optional(bool, false)
+    }), { enabled = false })
+  })
+  default = {}
+}
+
 variable "tags" {
   type    = map(string)
   default = {}
