@@ -96,6 +96,18 @@ variable "rag_image" {
   default     = ""
 }
 
+variable "admin_image" {
+  type        = string
+  description = "ACR image ref for the admin UI (only used when features.admin_ui.enabled)"
+  default     = ""
+}
+
+variable "entra_admin_app_client_id" {
+  type        = string
+  description = "Entra app registration client ID for the admin UI (audience for API JWTs)"
+  default     = ""
+}
+
 variable "features" {
   description = "Per-client optional features. Unset features are not provisioned."
   type = object({
@@ -111,6 +123,10 @@ variable "features" {
       enabled          = bool
       ingest_cron      = optional(string, "*/15 * * * *")
       namespace_prefix = optional(string, "")
+    }), { enabled = false })
+
+    admin_ui = optional(object({
+      enabled = bool
     }), { enabled = false })
   })
   default = {}

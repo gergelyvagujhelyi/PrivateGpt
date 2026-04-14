@@ -8,6 +8,9 @@ litellm_image   = "acroopenwebuishared.azurecr.io/litellm:stable"
 langfuse_image  = "langfuse/langfuse:2"
 digest_image    = "acroopenwebuishared.azurecr.io/digest:stable"
 rag_image       = "acroopenwebuishared.azurecr.io/rag:stable"
+admin_image     = "acroopenwebuishared.azurecr.io/admin:stable"
+
+entra_admin_app_client_id = "00000000-0000-0000-0000-000000000000"
 
 features = {
   digest = {
@@ -21,6 +24,9 @@ features = {
     enabled          = true
     ingest_cron      = "*/15 * * * *"
     namespace_prefix = ""
+  }
+  admin_ui = {
+    enabled = true
   }
 }
 

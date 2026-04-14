@@ -25,9 +25,13 @@ steps:
         RG="rg-owui-${{ parameters.client }}-${{ parameters.envName }}"
         PREFIX="owui-${{ parameters.client }}-${{ parameters.envName }}"
 
-        # Container Apps (always present)
-        for app in openwebui litellm; do
+        # Container Apps — core always present, admin optional (skipped silently when feature is off).
+        for app in openwebui litellm admin; do
           name="ca-${PREFIX}-${app}"
+          if ! az containerapp show -g "$RG" -n "$name" >/dev/null 2>&1; then
+            echo "==> ${name} not present — skipping"
+            continue
+          fi
           image="${{ parameters.acrName }}.azurecr.io/${app}:${{ parameters.sha }}"
           echo "==> deploying ${name} := ${image}"
 

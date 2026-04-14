@@ -39,3 +39,11 @@ output "rag_enabled" {
 output "rag_container_name" {
   value = module.storage.rag_sources_container_name
 }
+
+output "admin_enabled" {
+  value = local.admin_enabled
+}
+
+output "admin_fqdn" {
+  value = try(module.admin[0].fqdn, null)
+}
