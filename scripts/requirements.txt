@@ -1,0 +1,3 @@
+azure-identity==1.19.0
+azure-mgmt-cognitiveservices==13.6.0
+pyyaml==6.0.2

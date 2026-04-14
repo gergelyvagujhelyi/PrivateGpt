@@ -1,0 +1,34 @@
+# Declarative model catalogue.
+# Changes here drive both:
+#   1. Azure OpenAI deployments (terraform var aoai_models)
+#   2. LiteLLM router config (rendered by scripts/render_litellm_config.py)
+#
+# PR required. Validator enforces quota + content-safety policy.
+
+models:
+  - name: gpt-4o
+    version: "2024-08-06"
+    sku_name: Standard
+    capacity: 100
+    purpose: chat
+    exposed_as: gpt-4o
+    rpm: 240
+    tpm: 200000
+    content_safety_policy: Microsoft.DefaultV2
+
+  - name: gpt-4o-mini
+    version: "2024-07-18"
+    sku_name: Standard
+    capacity: 200
+    purpose: chat
+    exposed_as: gpt-4o-mini
+    rpm: 600
+    tpm: 600000
+    content_safety_policy: Microsoft.DefaultV2
+
+  - name: text-embedding-3-large
+    version: "1"
+    sku_name: Standard
+    capacity: 100
+    purpose: embedding
+    exposed_as: text-embedding-3-large

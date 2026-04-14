@@ -1,0 +1,69 @@
+flowchart LR
+    User([User])
+
+    subgraph Edge["Azure Edge"]
+        FD["Front Door + WAF"]
+    end
+
+    subgraph Tenant["Client Entra ID Tenant"]
+        AAD["Entra ID - OIDC SSO"]
+    end
+
+    subgraph Azure["Azure Subscription (per client) - Hub-Spoke VNet"]
+
+        subgraph Spoke["Spoke VNet (private)"]
+            subgraph ACA["Azure Container Apps Environment"]
+                OWUI["OpenWebUI container"]
+                LITELLM["LiteLLM proxy"]
+                LF["Langfuse - self-hosted"]
+            end
+
+            PG[("Postgres Flexible Server<br/>+ pgvector")]
+            BLOB[("Blob Storage<br/>CMK, PE")]
+            KV[("Key Vault")]
+            AOAI["Azure OpenAI<br/>Private Endpoint"]
+            AIS["Azure AI Search<br/>(optional, escalation)"]
+            CS["AI Content Safety"]
+        end
+
+        subgraph Hub["Hub VNet"]
+            FW["Azure Firewall - egress"]
+        end
+
+        subgraph Ops["Platform / Ops"]
+            LAW["Log Analytics + App Insights"]
+            ACR["Azure Container Registry"]
+            DEF["Defender for Cloud + Policy"]
+        end
+    end
+
+    User -->|HTTPS| FD
+    FD -->|Private Link| OWUI
+    OWUI -. OIDC .-> AAD
+    OWUI --> PG
+    OWUI --> BLOB
+    OWUI -->|OpenAI-compatible| LITELLM
+    LITELLM --> AOAI
+    LITELLM --> AIS
+    LITELLM --> CS
+    LITELLM -->|traces| LF
+    OWUI -->|traces| LF
+    LF --> PG
+
+    OWUI -. Managed Identity .-> KV
+    LITELLM -. Managed Identity .-> KV
+
+    ACA -->|egress| FW
+    ACA --> LAW
+    ACR -->|image pull| ACA
+    DEF -.-> Azure
+
+    classDef svc fill:#E8F1FB,stroke:#0078D4,color:#111
+    classDef data fill:#FFF4E5,stroke:#D17B00,color:#111
+    classDef sec fill:#FDECEC,stroke:#C0392B,color:#111
+    classDef ops fill:#EEF8EE,stroke:#2E7D32,color:#111
+
+    class OWUI,LITELLM,LF,FD svc
+    class PG,BLOB,AOAI,AIS data
+    class KV,AAD,CS,FW,DEF sec
+    class LAW,ACR,ACA ops

@@ -1,0 +1,35 @@
+parameters:
+  - name: envName
+    type: string
+  - name: client
+    type: string
+  - name: tfVersion
+    type: string
+  - name: stackDir
+    type: string
+
+steps:
+  - checkout: self
+
+  - task: TerraformInstaller@1
+    inputs:
+      terraformVersion: ${{ parameters.tfVersion }}
+
+  - download: current
+    artifact: tfplan-${{ parameters.envName }}
+
+  - task: AzureCLI@2
+    displayName: terraform apply (${{ parameters.envName }})
+    inputs:
+      azureSubscription: sc-owui-${{ parameters.client }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -euo pipefail
+        export ARM_USE_AZUREAD=true
+        export ENVIRONMENT=${{ parameters.envName }}
+        cd ${{ parameters.stackDir }}
+        envsubst < ../../envs/${{ parameters.client }}/backend.hcl > backend.generated.hcl
+        terraform init -backend-config=backend.generated.hcl
+        cp $(Pipeline.Workspace)/tfplan-${{ parameters.envName }}/tfplan.${{ parameters.envName }} ./tfplan
+        terraform apply -auto-approve tfplan

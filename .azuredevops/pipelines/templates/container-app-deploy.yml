@@ -1,0 +1,51 @@
+parameters:
+  - name: envName
+    type: string
+  - name: client
+    type: string
+  - name: sha
+    type: string
+  - name: acrName
+    type: string
+  - name: canary
+    type: boolean
+    default: false
+
+steps:
+  - checkout: self
+
+  - task: AzureCLI@2
+    displayName: Update Container Apps (${{ parameters.envName }})
+    inputs:
+      azureSubscription: sc-owui-${{ parameters.client }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -euo pipefail
+        RG="rg-owui-${{ parameters.client }}-${{ parameters.envName }}"
+        PREFIX="owui-${{ parameters.client }}-${{ parameters.envName }}"
+
+        for app in openwebui litellm; do
+          name="ca-${PREFIX}-${app}"
+          image="${{ parameters.acrName }}.azurecr.io/${app}:${{ parameters.sha }}"
+          echo "==> deploying ${name} := ${image}"
+
+          if [[ "${{ parameters.canary }}" == "True" ]]; then
+            # Create a new revision at 10% traffic, then ramp.
+            az containerapp update -g "$RG" -n "$name" --image "$image" --revision-suffix "${{ parameters.sha }}"
+            az containerapp ingress traffic set -g "$RG" -n "$name" \
+              --revision-weight latest=10 \
+              --revision-weight "$(az containerapp revision list -g "$RG" -n "$name" --query "[?properties.active && name!='${name}--${{ parameters.sha }}'].name | [0]" -o tsv)=90"
+
+            # Smoke probe
+            fqdn=$(az containerapp show -g "$RG" -n "$name" --query properties.configuration.ingress.fqdn -o tsv)
+            for i in {1..30}; do
+              if curl -fsS "https://${fqdn}/health"; then break; fi
+              sleep 5
+            done
+
+            az containerapp ingress traffic set -g "$RG" -n "$name" --revision-weight latest=100
+          else
+            az containerapp update -g "$RG" -n "$name" --image "$image" --revision-suffix "${{ parameters.sha }}"
+          fi
+        done

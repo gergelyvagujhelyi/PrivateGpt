@@ -1,0 +1,43 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfplan.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+backend.hcl
+*.auto.tfvars
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Marp
+node_modules/
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local build output
+dist/
+build/

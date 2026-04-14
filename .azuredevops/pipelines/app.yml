@@ -1,0 +1,159 @@
+name: app-$(Date:yyyyMMdd)-$(Rev:r)
+
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - app/**
+      - scripts/**
+      - .azuredevops/pipelines/app.yml
+
+pr:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - app/**
+      - scripts/**
+
+parameters:
+  - name: client
+    type: string
+    default: acme
+
+variables:
+  - group: owui-${{ parameters.client }}
+  - name: acrName
+    value: acroopenwebuishared
+  - name: sha
+    value: $(Build.SourceVersion)
+
+stages:
+  - stage: Validate
+    jobs:
+      - job: lint_and_validate_models
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - checkout: self
+
+          - task: UsePythonVersion@0
+            inputs: { versionSpec: '3.12' }
+
+          - script: |
+              pip install -r scripts/requirements.txt ruff mypy
+              ruff check scripts/
+              mypy scripts/ --ignore-missing-imports
+            displayName: Python lint + types
+
+          - task: AzureCLI@2
+            displayName: Validate models.yaml
+            inputs:
+              azureSubscription: sc-owui-${{ parameters.client }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                export AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+                python scripts/validate_models.py app/models.yaml
+
+          - script: |
+              python scripts/render_litellm_config.py app/models.yaml --out app/litellm/config.yaml
+              git diff --exit-code app/litellm/config.yaml || {
+                echo "::error::config.yaml is out of sync with models.yaml — regenerate and commit"
+                exit 1
+              }
+            displayName: Check LiteLLM config is in sync
+
+  - stage: Build
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: build_images
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          matrix:
+            openwebui: { image: openwebui, context: app/openwebui }
+            litellm:   { image: litellm,   context: app/litellm }
+        steps:
+          - checkout: self
+
+          - task: AzureCLI@2
+            displayName: Build + push $(image) to ACR
+            inputs:
+              azureSubscription: sc-owui-${{ parameters.client }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                az acr login -n $(acrName)
+                docker build \
+                  --label org.opencontainers.image.revision=$(sha) \
+                  --label org.opencontainers.image.source=$(Build.Repository.Uri) \
+                  -t $(acrName).azurecr.io/$(image):$(sha) \
+                  -t $(acrName).azurecr.io/$(image):dev \
+                  $(context)
+                docker push $(acrName).azurecr.io/$(image):$(sha)
+                docker push $(acrName).azurecr.io/$(image):dev
+
+          - script: |
+              curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+              trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed \
+                $(acrName).azurecr.io/$(image):$(sha)
+            displayName: Trivy scan (fail on HIGH/CRITICAL)
+
+  - stage: Deploy_Dev
+    dependsOn: Build
+    jobs:
+      - deployment: deploy_dev
+        environment: owui-${{ parameters.client }}-dev
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/container-app-deploy.yml
+                  parameters:
+                    envName: dev
+                    client: ${{ parameters.client }}
+                    sha: $(sha)
+                    acrName: $(acrName)
+
+  - stage: Eval
+    dependsOn: Deploy_Dev
+    jobs:
+      - job: langfuse_eval
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - checkout: self
+          - task: UsePythonVersion@0
+            inputs: { versionSpec: '3.12' }
+          - script: |
+              pip install -r tests/eval/requirements.txt
+              python -m pytest tests/eval -q --junitxml=eval-results.xml
+            env:
+              LANGFUSE_HOST: $(LANGFUSE_HOST_DEV)
+              LANGFUSE_PUBLIC_KEY: $(LANGFUSE_PUBLIC_KEY_DEV)
+              LANGFUSE_SECRET_KEY: $(LANGFUSE_SECRET_KEY_DEV)
+              OPENAI_BASE_URL: $(LITELLM_URL_DEV)
+              OPENAI_API_KEY: $(LITELLM_MASTER_KEY_DEV)
+            displayName: Run LLM eval suite
+          - task: PublishTestResults@2
+            inputs: { testResultsFiles: eval-results.xml }
+
+  - stage: Deploy_Prod
+    dependsOn: Eval
+    jobs:
+      - deployment: deploy_prod
+        environment: owui-${{ parameters.client }}-prod
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/container-app-deploy.yml
+                  parameters:
+                    envName: prod
+                    client: ${{ parameters.client }}
+                    sha: $(sha)
+                    acrName: $(acrName)
+                    canary: true
