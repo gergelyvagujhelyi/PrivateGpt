@@ -1,0 +1,37 @@
+# Local dev loop for the digest worker.
+# Brings up Postgres (with pgvector) + a lightweight Langfuse.
+# Use alongside an exported LITELLM URL + AOAI key from your dev Azure stack,
+# or stub via the unit/integration tests in app/digest/tests.
+#
+#   docker compose -f docker-compose.test.yml up -d
+#   cd app/digest && CADENCE=daily DATABASE_URL=postgresql://owui:owui@localhost:5432/openwebui \
+#     LANGFUSE_HOST=http://localhost:3000 ... python -m src.main
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: owui
+      POSTGRES_PASSWORD: owui
+      POSTGRES_DB: openwebui
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U owui"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  langfuse:
+    image: langfuse/langfuse:2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://owui:owui@postgres:5432/openwebui
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: local-dev-only-not-secret
+      SALT: local-dev-only-not-secret
+      TELEMETRY_ENABLED: "false"
+    ports:
+      - "3000:3000"

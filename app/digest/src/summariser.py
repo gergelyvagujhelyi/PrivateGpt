@@ -1,15 +1,11 @@
 from __future__ import annotations
 
+import functools
 import os
 
 from openai import OpenAI
 
 from .langfuse_client import Activity
-
-_client = OpenAI(
-    base_url=os.environ["OPENAI_BASE_URL"],
-    api_key=os.environ["OPENAI_API_KEY"],
-)
 
 SYSTEM_PROMPT = (
     "You write a short, friendly summary of a user's AI assistant usage. "
@@ -19,9 +15,17 @@ SYSTEM_PROMPT = (
 )
 
 
+@functools.lru_cache(maxsize=1)
+def _client() -> OpenAI:
+    return OpenAI(
+        base_url=os.environ["OPENAI_BASE_URL"],
+        api_key=os.environ["OPENAI_API_KEY"],
+    )
+
+
 def summarise(activity: Activity) -> str:
     bullets = "\n".join(f"- {t['name']}" for t in activity.traces[:30]) or "(none)"
-    resp = _client.chat.completions.create(
+    resp = _client().chat.completions.create(
         model="gpt-4o-mini",
         temperature=0,
         user="digest-worker",
