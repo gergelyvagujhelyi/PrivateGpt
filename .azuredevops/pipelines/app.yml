@@ -21,6 +21,7 @@ parameters:
   - name: client
     type: string
     default: acme
+    values: [acme, beta]
 
 variables:
   - group: owui-${{ parameters.client }}
@@ -74,6 +75,7 @@ stages:
           matrix:
             openwebui: { image: openwebui, context: app/openwebui }
             litellm:   { image: litellm,   context: app/litellm }
+            digest:    { image: digest,    context: app/digest }
         steps:
           - checkout: self
 

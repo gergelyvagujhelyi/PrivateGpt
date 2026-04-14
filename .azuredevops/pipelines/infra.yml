@@ -19,7 +19,7 @@ parameters:
   - name: client
     type: string
     default: acme
-    values: [acme]
+    values: [acme, beta]
 
 variables:
   - group: owui-${{ parameters.client }}   # holds ARM_CLIENT_ID, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID

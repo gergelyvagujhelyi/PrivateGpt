@@ -25,6 +25,7 @@ steps:
         RG="rg-owui-${{ parameters.client }}-${{ parameters.envName }}"
         PREFIX="owui-${{ parameters.client }}-${{ parameters.envName }}"
 
+        # Container Apps (always present)
         for app in openwebui litellm; do
           name="ca-${PREFIX}-${app}"
           image="${{ parameters.acrName }}.azurecr.io/${app}:${{ parameters.sha }}"
@@ -47,5 +48,17 @@ steps:
             az containerapp ingress traffic set -g "$RG" -n "$name" --revision-weight latest=100
           else
             az containerapp update -g "$RG" -n "$name" --image "$image" --revision-suffix "${{ parameters.sha }}"
+          fi
+        done
+
+        # Optional Container Apps Jobs — only update if they exist in this stack
+        for job in digest-daily digest-weekly; do
+          jobname="caj-${PREFIX}-${job}"
+          if az containerapp job show -g "$RG" -n "$jobname" >/dev/null 2>&1; then
+            image="${{ parameters.acrName }}.azurecr.io/digest:${{ parameters.sha }}"
+            echo "==> deploying job ${jobname} := ${image}"
+            az containerapp job update -g "$RG" -n "$jobname" --image "$image"
+          else
+            echo "==> job ${jobname} not present (feature disabled) — skipping"
           fi
         done

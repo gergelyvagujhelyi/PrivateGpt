@@ -225,4 +225,85 @@ module "frontdoor" {
   tags                = local.base_tags
 }
 
+# ─────────────────────────────────────────────────────────────────────
+# Optional features
+# ─────────────────────────────────────────────────────────────────────
+
+locals {
+  digest_enabled = try(var.features.digest.enabled, false)
+}
+
+module "communication_services" {
+  count  = local.digest_enabled ? 1 : 0
+  source = "../../modules/communication_services"
+
+  name_prefix         = local.name_prefix
+  resource_group_name = azurerm_resource_group.this.name
+  location            = var.location
+  key_vault_id        = module.keyvault.id
+  log_analytics_id    = module.observability.log_analytics_id
+  sender_local_part   = try(var.features.digest.sender_local, "assistant")
+  tags                = local.base_tags
+}
+
+locals {
+  digest_env_common = local.digest_enabled ? [
+    { name = "DATABASE_URL",          secret_name = "openwebui-db-url" },
+    { name = "OPENAI_BASE_URL",       value = "https://${module.litellm.fqdn}/v1" },
+    { name = "OPENAI_API_KEY",        secret_name = "litellm-master-key" },
+    { name = "LANGFUSE_HOST",         value = "https://${module.langfuse.fqdn}" },
+    { name = "LANGFUSE_PUBLIC_KEY",   secret_name = "langfuse-pk" },
+    { name = "LANGFUSE_SECRET_KEY",   secret_name = "langfuse-sk" },
+    { name = "ACS_CONNECTION_STRING", secret_name = "acs-connection-string" },
+    { name = "ACS_SENDER",            value = module.communication_services[0].sender_address },
+    { name = "UNSUB_HMAC_KEY",        secret_name = "unsub-hmac-key" },
+    { name = "PUBLIC_BASE_URL",       value = module.frontdoor.endpoint },
+  ] : []
+
+  digest_secrets_common = local.digest_enabled ? {
+    "openwebui-db-url"       = module.postgres.openwebui_connection_string
+    "litellm-master-key"     = module.keyvault.litellm_master_key_ref
+    "langfuse-pk"            = module.keyvault.langfuse_pk_ref
+    "langfuse-sk"            = module.keyvault.langfuse_sk_ref
+    "acs-connection-string"  = module.communication_services[0].connection_string_secret_ref
+    "unsub-hmac-key"         = module.communication_services[0].unsub_hmac_secret_ref
+  } : {}
+}
+
+module "digest_daily" {
+  count  = local.digest_enabled ? 1 : 0
+  source = "../../modules/container_app_job"
+
+  name                 = "digest-daily"
+  name_prefix          = local.name_prefix
+  resource_group_name  = azurerm_resource_group.this.name
+  container_app_env_id = module.container_app_env.id
+  key_vault_id         = module.keyvault.id
+  image                = var.digest_image
+  cron_expression      = try(var.features.digest.daily_cron, "0 7 * * *")
+
+  env     = concat(local.digest_env_common, [{ name = "CADENCE", value = "daily" }])
+  secrets = local.digest_secrets_common
+
+  tags = local.base_tags
+}
+
+module "digest_weekly" {
+  count  = local.digest_enabled ? 1 : 0
+  source = "../../modules/container_app_job"
+
+  name                 = "digest-weekly"
+  name_prefix          = local.name_prefix
+  resource_group_name  = azurerm_resource_group.this.name
+  container_app_env_id = module.container_app_env.id
+  key_vault_id         = module.keyvault.id
+  image                = var.digest_image
+  cron_expression      = try(var.features.digest.weekly_cron, "0 7 * * MON")
+
+  env     = concat(local.digest_env_common, [{ name = "CADENCE", value = "weekly" }])
+  secrets = local.digest_secrets_common
+
+  tags = local.base_tags
+}
+
 data "azurerm_client_config" "current" {}
