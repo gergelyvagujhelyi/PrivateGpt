@@ -92,11 +92,13 @@ features = {
 
 ### `digest` — scheduled per-user summary emails
 
-A Container Apps Job runs on cron, pulls each opted-in user's activity
-from Langfuse, summarises it via `gpt-4o-mini`, and delivers the email
-via Azure Communication Services.
+A Container Apps Job runs on cron, invokes a **tool-calling agent**
+powered by Claude Haiku 4.5 (`get_chat_titles` / `get_usage_stats`) to
+compose each user's recap, and delivers the email via Azure
+Communication Services.
 Users opt in through the `user_preferences` table. Every email carries an
-HMAC-signed unsubscribe link.
+HMAC-signed unsubscribe link. The full agent trace (tool calls,
+arguments, results, final message) shows up in Langfuse per run.
 
 ## Local development
 
