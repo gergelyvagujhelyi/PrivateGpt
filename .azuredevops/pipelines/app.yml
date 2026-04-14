@@ -42,10 +42,24 @@ stages:
             inputs: { versionSpec: '3.12' }
 
           - script: |
-              pip install -r scripts/requirements.txt ruff mypy
-              ruff check scripts/
-              mypy scripts/ --ignore-missing-imports
+              pip install -r scripts/requirements.txt -r app/digest/requirements-dev.txt
+              ruff check scripts/ app/digest/
+              mypy scripts/ app/digest/src --ignore-missing-imports
             displayName: Python lint + types
+
+          - script: |
+              pytest app/digest/tests -q \
+                --junitxml=digest-unit.xml \
+                --cov=app/digest/src --cov-report=xml:digest-coverage.xml
+            displayName: Digest unit + integration tests
+
+          - task: PublishTestResults@2
+            condition: succeededOrFailed()
+            inputs: { testResultsFiles: digest-unit.xml, testRunTitle: digest }
+
+          - task: PublishCodeCoverageResults@2
+            condition: succeededOrFailed()
+            inputs: { summaryFileLocation: digest-coverage.xml }
 
           - task: AzureCLI@2
             displayName: Validate models.yaml

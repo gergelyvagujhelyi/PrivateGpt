@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import functools
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from langfuse import Langfuse
 
-_lf = Langfuse(
-    host=os.environ["LANGFUSE_HOST"],
-    public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
-    secret_key=os.environ["LANGFUSE_SECRET_KEY"],
-)
+
+@functools.lru_cache(maxsize=1)
+def _client() -> Langfuse:
+    return Langfuse(
+        host=os.environ["LANGFUSE_HOST"],
+        public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
+        secret_key=os.environ["LANGFUSE_SECRET_KEY"],
+    )
 
 
 @dataclass
@@ -28,7 +32,7 @@ class Activity:
 
 
 def fetch_user_activity(user_id: str, since: datetime) -> Activity:
-    page = _lf.api.trace.list(user_id=user_id, from_timestamp=since, limit=200)
+    page = _client().api.trace.list(user_id=user_id, from_timestamp=since, limit=200)
     traces = page.data
     model_counts: dict[str, int] = {}
     tokens = 0

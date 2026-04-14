@@ -12,7 +12,7 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
-backend.hcl
+backend.generated.hcl
 *.auto.tfvars
 
 # Python
