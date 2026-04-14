@@ -74,8 +74,8 @@ module "storage" {
   tags                       = local.base_tags
 }
 
-module "openai" {
-  source = "../../modules/openai"
+module "ai_foundry" {
+  source = "../../modules/ai_foundry"
 
   name_prefix                = local.name_prefix
   resource_group_name        = azurerm_resource_group.this.name
@@ -83,7 +83,9 @@ module "openai" {
   private_endpoint_subnet_id = module.network.pe_subnet_id
   private_dns_zone_id        = module.network.openai_private_dns_zone_id
   log_analytics_id           = module.observability.log_analytics_id
-  model_deployments          = var.aoai_models
+  key_vault_id               = module.keyvault.id
+  application_insights_id    = module.observability.app_insights_id
+  deployments                = var.foundry_deployments
   tags                       = local.base_tags
 }
 
@@ -145,17 +147,19 @@ module "litellm" {
   key_vault_id         = module.keyvault.id
 
   env = [
-    { name = "AZURE_API_KEY", secret_name = "aoai-key" },
-    { name = "AZURE_API_BASE", value = module.openai.endpoint },
-    { name = "AZURE_API_VERSION", value = "2024-08-01-preview" },
-    { name = "LANGFUSE_PUBLIC_KEY", secret_name = "langfuse-pk" },
+    { name = "AZURE_AI_API_KEY",     secret_name = "foundry-key" },
+    { name = "AZURE_AI_API_BASE",    value = module.ai_foundry.foundry_endpoint },
+    { name = "AZURE_API_KEY",        secret_name = "foundry-key" },
+    { name = "AZURE_API_BASE",       value = module.ai_foundry.endpoint },
+    { name = "AZURE_API_VERSION",    value = "2024-10-21" },
+    { name = "LANGFUSE_PUBLIC_KEY",  secret_name = "langfuse-pk" },
     { name = "LANGFUSE_SECRET_KEY", secret_name = "langfuse-sk" },
-    { name = "LANGFUSE_HOST", value = "https://${module.langfuse.fqdn}" },
-    { name = "LITELLM_MASTER_KEY", secret_name = "litellm-master-key" },
+    { name = "LANGFUSE_HOST",        value = "https://${module.langfuse.fqdn}" },
+    { name = "LITELLM_MASTER_KEY",   secret_name = "litellm-master-key" },
   ]
 
   secrets = {
-    "aoai-key"           = module.openai.key_vault_secret_ref
+    "foundry-key"        = module.ai_foundry.key
     "langfuse-pk"        = module.keyvault.langfuse_pk_ref
     "langfuse-sk"        = module.keyvault.langfuse_sk_ref
     "litellm-master-key" = module.keyvault.litellm_master_key_ref

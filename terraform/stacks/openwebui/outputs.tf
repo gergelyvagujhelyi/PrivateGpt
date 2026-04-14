@@ -11,9 +11,13 @@ output "log_analytics_workspace_id" {
   value = module.observability.log_analytics_id
 }
 
-output "openai_endpoint" {
-  value     = module.openai.endpoint
+output "foundry_endpoint" {
+  value     = module.ai_foundry.foundry_endpoint
   sensitive = true
+}
+
+output "foundry_deployments" {
+  value = module.ai_foundry.deployments
 }
 
 output "langfuse_internal_url" {

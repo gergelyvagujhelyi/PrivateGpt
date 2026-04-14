@@ -1,34 +1,27 @@
-# Declarative model catalogue.
-# Changes here drive both:
-#   1. Azure OpenAI deployments (terraform var aoai_models)
+# Declarative model catalogue — single source of truth.
+# Changes drive:
+#   1. Azure AI Foundry deployments (terraform var foundry_deployments)
 #   2. LiteLLM router config (rendered by scripts/render_litellm_config.py)
-#
-# PR required. Validator enforces quota + content-safety policy.
 
 models:
-  - name: gpt-4o
-    version: "2024-08-06"
-    sku_name: Standard
-    capacity: 100
+  - name: claude-sonnet-4-5
+    provider: anthropic
+    version: "1"
     purpose: chat
-    exposed_as: gpt-4o
-    rpm: 240
-    tpm: 200000
+    exposed_as: claude-sonnet-4-5
     content_safety_policy: Microsoft.DefaultV2
 
-  - name: gpt-4o-mini
-    version: "2024-07-18"
-    sku_name: Standard
-    capacity: 200
+  - name: claude-haiku-4-5
+    provider: anthropic
+    version: "1"
     purpose: chat
-    exposed_as: gpt-4o-mini
-    rpm: 600
-    tpm: 600000
+    exposed_as: claude-haiku-4-5
     content_safety_policy: Microsoft.DefaultV2
 
   - name: text-embedding-3-large
+    provider: openai
     version: "1"
     sku_name: Standard
-    capacity: 100
+    capacity: 50
     purpose: embedding
     exposed_as: text-embedding-3-large

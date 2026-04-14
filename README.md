@@ -1,15 +1,15 @@
 # PrivateGpt — OpenWebUI on Azure
 
 Per-client private AI chat on Azure, scripted end-to-end.
-**OpenWebUI + Azure OpenAI + Langfuse**, delivered through Terraform and
-Azure DevOps, running in a closed VNet.
+**OpenWebUI + Azure AI Foundry (Claude) + Langfuse**, delivered through
+Terraform and Azure DevOps, running in a closed VNet.
 
 ![Architecture](architecture.png)
 
 ## What's in the box
 
 - Private OpenWebUI on **Azure Container Apps**, reachable only via Front Door + WAF.
-- **Azure OpenAI** (GPT-4o / GPT-4o-mini / text-embedding-3-large) over Private Endpoint.
+- **Azure AI Foundry** with **Claude Sonnet 4.5** + **Claude Haiku 4.5** (MaaS) and `text-embedding-3-large`, all over Private Endpoint.
 - **LiteLLM** sidecar as the single OpenAI-compatible endpoint — multi-model routing, per-user budgets.
 - **Langfuse** (self-hosted) for LLM tracing, cost visibility, and CI eval gates.
 - **Postgres Flexible Server** with **pgvector** for both OpenWebUI state and RAG embeddings.

@@ -26,7 +26,7 @@ def _client() -> OpenAI:
 def summarise(activity: Activity) -> str:
     bullets = "\n".join(f"- {t['name']}" for t in activity.traces[:30]) or "(none)"
     resp = _client().chat.completions.create(
-        model="gpt-4o-mini",
+        model="claude-haiku-4-5",
         temperature=0,
         user="digest-worker",
         messages=[

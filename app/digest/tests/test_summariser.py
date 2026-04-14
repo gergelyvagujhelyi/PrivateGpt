@@ -36,7 +36,7 @@ def test_summariser_uses_system_prompt(stub_llm: MagicMock) -> None:
     assert messages[0]["role"] == "system"
     assert messages[0]["content"] == summariser.SYSTEM_PROMPT
     assert call.kwargs["temperature"] == 0
-    assert call.kwargs["model"] == "gpt-4o-mini"
+    assert call.kwargs["model"] == "claude-haiku-4-5"
 
 
 def test_summariser_handles_empty(stub_llm: MagicMock) -> None:

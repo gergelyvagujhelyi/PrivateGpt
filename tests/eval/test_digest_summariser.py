@@ -64,7 +64,7 @@ def client() -> OpenAI:
 def test_summariser(case: DigestCase, client: OpenAI) -> None:
     bullets = "\n".join(f"- {t}" for t in case.traces) or "(none)"
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="claude-haiku-4-5",
         temperature=0,
         user=f"ci-digest-{case.name}",
         messages=[
