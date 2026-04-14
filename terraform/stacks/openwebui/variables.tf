@@ -90,6 +90,12 @@ variable "digest_image" {
   default     = ""
 }
 
+variable "rag_image" {
+  type        = string
+  description = "ACR image ref for the RAG ingestion worker (only used when features.rag.enabled)"
+  default     = ""
+}
+
 variable "features" {
   description = "Per-client optional features. Unset features are not provisioned."
   type = object({
@@ -99,6 +105,12 @@ variable "features" {
       weekly_cron    = optional(string, "0 7 * * MON")
       sender_local   = optional(string, "assistant")
       default_opt_in = optional(bool, false)
+    }), { enabled = false })
+
+    rag = optional(object({
+      enabled          = bool
+      ingest_cron      = optional(string, "*/15 * * * *")
+      namespace_prefix = optional(string, "")
     }), { enabled = false })
   })
   default = {}

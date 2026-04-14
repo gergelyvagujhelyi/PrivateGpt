@@ -52,10 +52,15 @@ steps:
         done
 
         # Optional Container Apps Jobs — only update if they exist in this stack
-        for job in digest-daily digest-weekly; do
+        declare -A JOB_IMAGE=(
+          [digest-daily]=digest
+          [digest-weekly]=digest
+          [rag-ingest]=rag
+        )
+        for job in "${!JOB_IMAGE[@]}"; do
           jobname="caj-${PREFIX}-${job}"
           if az containerapp job show -g "$RG" -n "$jobname" >/dev/null 2>&1; then
-            image="${{ parameters.acrName }}.azurecr.io/digest:${{ parameters.sha }}"
+            image="${{ parameters.acrName }}.azurecr.io/${JOB_IMAGE[$job]}:${{ parameters.sha }}"
             echo "==> deploying job ${jobname} := ${image}"
             az containerapp job update -g "$RG" -n "$jobname" --image "$image"
           else

@@ -90,6 +90,7 @@ stages:
             openwebui: { image: openwebui, context: app/openwebui }
             litellm:   { image: litellm,   context: app/litellm }
             digest:    { image: digest,    context: app/digest }
+            rag:       { image: rag,       context: app/rag }
         steps:
           - checkout: self
 

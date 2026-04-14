@@ -334,4 +334,49 @@ module "digest_weekly" {
   tags = local.base_tags
 }
 
+# ─── RAG ingestion worker (optional) ───
+
+locals {
+  rag_enabled = try(var.features.rag.enabled, false)
+}
+
+module "rag_ingest" {
+  count  = local.rag_enabled ? 1 : 0
+  source = "../../modules/container_app_job"
+
+  name                 = "rag-ingest"
+  name_prefix          = local.name_prefix
+  resource_group_name  = azurerm_resource_group.this.name
+  container_app_env_id = module.container_app_env.id
+  key_vault_id         = module.keyvault.id
+  image                = var.rag_image
+  cron_expression      = try(var.features.rag.ingest_cron, "*/15 * * * *")
+
+  env = [
+    { name = "DATABASE_URL",     secret_name = "openwebui-db-url" },
+    { name = "BLOB_ACCOUNT_URL", value       = "https://${module.storage.name}.blob.core.windows.net" },
+    { name = "BLOB_CONTAINER",   value       = module.storage.rag_sources_container_name },
+    { name = "NAMESPACE_PREFIX", value       = try(var.features.rag.namespace_prefix, "") },
+    { name = "OPENAI_BASE_URL",  value       = "https://${module.litellm.fqdn}/v1" },
+    { name = "OPENAI_API_KEY",   secret_name = "litellm-master-key" },
+  ]
+
+  secrets = {
+    "openwebui-db-url"   = module.postgres.openwebui_connection_string
+    "litellm-master-key" = module.keyvault.litellm_master_key_ref
+  }
+
+  cpu    = 1.0
+  memory = "2Gi"
+
+  tags = local.base_tags
+}
+
+resource "azurerm_role_assignment" "rag_blob_reader" {
+  count                = local.rag_enabled ? 1 : 0
+  scope                = module.storage.id
+  role_definition_name = "Storage Blob Data Reader"
+  principal_id         = module.rag_ingest[0].principal_id
+}
+
 data "azurerm_client_config" "current" {}

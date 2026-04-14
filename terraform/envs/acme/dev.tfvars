@@ -7,6 +7,7 @@ openwebui_image = "acroopenwebuishared.azurecr.io/openwebui:dev"
 litellm_image   = "acroopenwebuishared.azurecr.io/litellm:dev"
 langfuse_image  = "langfuse/langfuse:2"
 digest_image    = "acroopenwebuishared.azurecr.io/digest:dev"
+rag_image       = "acroopenwebuishared.azurecr.io/rag:dev"
 
 features = {
   digest = {
@@ -15,6 +16,11 @@ features = {
     weekly_cron    = "0 6 * * MON"
     sender_local   = "assistant"
     default_opt_in = false
+  }
+  rag = {
+    enabled          = true
+    ingest_cron      = "*/15 * * * *"
+    namespace_prefix = ""
   }
 }
 
