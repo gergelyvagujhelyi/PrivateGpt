@@ -18,7 +18,7 @@ if [[ -d "${ENV_DIR}" ]]; then
 fi
 
 cp -R "${REPO_ROOT}/terraform/envs/acme" "${ENV_DIR}"
-for env in dev prod; do
+for env in dev test prod; do
   sed -i.bak "s/^client *=.*/client      = \"${CLIENT}\"/" "${ENV_DIR}/${env}.tfvars"
   sed -i.bak "s/^cost_center *=.*/cost_center = \"${CC}\"/" "${ENV_DIR}/${env}.tfvars"
   rm "${ENV_DIR}/${env}.tfvars.bak"
@@ -29,5 +29,9 @@ echo
 echo "Next steps:"
 echo "  1. Create ADO variable group 'owui-${CLIENT}' with ARM_* service connection credentials."
 echo "  2. Create ADO environments: owui-${CLIENT}-dev, -test, -prod with approvers."
-echo "  3. Register Entra app for SSO; store client-id + secret in Key Vault after first apply."
-echo "  4. Open a PR — the infra pipeline will plan into each env."
+echo "  3. Register Entra app for OpenWebUI SSO; store client-id + secret in Key Vault after first apply."
+echo "  4. If enabling features.admin_ui:"
+echo "       - Register a second Entra app for the admin SPA + API"
+echo "       - Set entra_admin_app_client_id in envs/${CLIENT}/*.tfvars"
+echo "       - After first apply, register the 'admin_public_url' TF output as the Entra app's reply URL"
+echo "  5. Open a PR — the infra pipeline will plan into each env."

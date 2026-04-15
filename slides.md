@@ -22,6 +22,23 @@ style: |
 
 ---
 
+<!-- _class: lead -->
+
+## Note — this is the v1 design-review deck
+
+It captures the original architecture we walked through with Andreas.
+Since then the implementation has evolved:
+
+- **Model layer:** Azure OpenAI (GPT-4o) → **Azure AI Foundry + Claude Sonnet/Haiku 4.5 (MaaS)**
+- **Digest summariser:** single prompt → **tool-calling Claude agent** (Langfuse-traced)
+- **RAG:** OpenWebUI's built-in → **custom ingestion pipeline** (Blob → chunk → embed → pgvector with HNSW)
+- **New:** TypeScript/React admin UI on a dedicated Front Door endpoint, Entra SSO, runtime config
+
+Current architecture diagram + details in the repo `README.md`. The rest
+of this deck is retained for the original reasoning and trade-offs.
+
+---
+
 ## 1 · Framing
 
 **The ask:** a generic chatbot foundation, deployable per client, that becomes the base for their AI initiatives.
@@ -61,7 +78,7 @@ Speaker notes:
 | Compute | **Azure Container Apps** (internal, VNet) | Right-sized; revisions + canary; no K8s tax |
 | State DB | **Postgres Flexible Server** (private) | OpenWebUI first-class support |
 | Vectors | **pgvector** → escalate to **Azure AI Search** | Start simple; upgrade when retrieval demands |
-| LLM | **Azure OpenAI** + **LiteLLM** proxy | One endpoint for OpenWebUI, many models behind it |
+| LLM | **Azure OpenAI** + **LiteLLM** proxy *(shipped as: Azure AI Foundry + Claude MaaS + LiteLLM)* | One endpoint for OpenWebUI, many models behind it |
 | Files | **Blob Storage** (private endpoint, CMK) | RAG sources + uploads |
 | Secrets | **Key Vault** + Managed Identity | Zero secrets in pipelines/app |
 | Obs (infra) | **Log Analytics + App Insights** | Native, alert rules as code |
