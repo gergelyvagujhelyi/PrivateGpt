@@ -250,7 +250,13 @@ module "frontdoor" {
   origin_host_header  = module.openwebui.fqdn
   allowed_ip_ranges   = var.allowed_ip_ranges
   log_analytics_id    = module.observability.log_analytics_id
-  tags                = local.base_tags
+
+  # Each enabled secondary feature that needs public reach gets its own Front Door endpoint.
+  secondary_origins = merge(
+    local.admin_enabled ? { admin = { host_name = module.admin[0].fqdn } } : {},
+  )
+
+  tags = local.base_tags
 }
 
 # ─────────────────────────────────────────────────────────────────────

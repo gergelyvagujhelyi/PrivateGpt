@@ -47,3 +47,8 @@ output "admin_enabled" {
 output "admin_fqdn" {
   value = try(module.admin[0].fqdn, null)
 }
+
+output "admin_public_url" {
+  value       = try(module.frontdoor.secondary_endpoints["admin"], null)
+  description = "Public URL users sign in to for the admin UI (Entra reply URL target)."
+}
