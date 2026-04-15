@@ -1,12 +1,17 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { Router } from "express";
 import { parse as parseYaml } from "yaml";
 
 import { ModelCatalogueSchema } from "../../shared/schema.js";
 
-const CATALOGUE_PATH = process.env.MODELS_YAML_PATH ?? path.resolve("/etc/admin/models.yaml");
+// Production: Dockerfile ships app/models.yaml to /app/models.yaml and sets MODELS_YAML_PATH.
+// Local dev: fall back to the repo copy two levels up from this source file.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_PATH = path.resolve(__dirname, "..", "..", "..", "models.yaml");
+const CATALOGUE_PATH = process.env.MODELS_YAML_PATH ?? DEFAULT_PATH;
 
 export const modelsRouter = Router();
 
