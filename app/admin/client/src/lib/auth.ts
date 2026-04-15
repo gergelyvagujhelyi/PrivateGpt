@@ -1,17 +1,29 @@
 import type { Configuration } from "@azure/msal-browser";
 
-const tenantId = import.meta.env.VITE_ENTRA_TENANT_ID as string;
-const clientId = import.meta.env.VITE_ENTRA_CLIENT_ID as string;
-const apiScope = import.meta.env.VITE_ADMIN_API_SCOPE as string;
-
-export const msalConfig: Configuration = {
-  auth: {
-    clientId,
-    authority: `https://login.microsoftonline.com/${tenantId}`,
-    redirectUri: window.location.origin,
-    navigateToLoginRequestUrl: true,
-  },
-  cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false },
+export type AppConfig = {
+  tenantId: string;
+  clientId: string;
+  apiScope: string;
 };
 
-export const loginRequest = { scopes: [apiScope, "openid", "profile", "email"] };
+export async function fetchAppConfig(): Promise<AppConfig> {
+  const res = await fetch("/api/config");
+  if (!res.ok) throw new Error(`/api/config returned ${res.status}`);
+  return (await res.json()) as AppConfig;
+}
+
+export function buildMsalConfig(cfg: AppConfig): Configuration {
+  return {
+    auth: {
+      clientId: cfg.clientId,
+      authority: `https://login.microsoftonline.com/${cfg.tenantId}`,
+      redirectUri: window.location.origin,
+      navigateToLoginRequestUrl: true,
+    },
+    cache: { cacheLocation: "sessionStorage", storeAuthStateInCookie: false },
+  };
+}
+
+export function buildLoginRequest(cfg: AppConfig) {
+  return { scopes: [cfg.apiScope, "openid", "profile", "email"] };
+}
