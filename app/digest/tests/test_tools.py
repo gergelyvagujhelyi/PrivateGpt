@@ -9,22 +9,37 @@ import pytest
 from src import tools
 
 
-def test_unknown_tool_returns_error():
-    out = tools.call_tool("nonsense", "{}")
-    assert json.loads(out) == {"error": "unknown tool: nonsense"}
+def test_unknown_tool_returns_structured_error():
+    out = json.loads(tools.call_tool("nonsense", "{}"))
+    assert out == {"error_code": "unknown_tool", "name": "nonsense"}
 
 
-def test_bad_json_returns_error():
-    out = tools.call_tool("get_chat_titles", "not-json")
-    assert "error" in json.loads(out)
+def test_bad_json_returns_correlated_error():
+    out = json.loads(tools.call_tool("get_chat_titles", "not-json"))
+    assert out["error_code"] == "tool_failed"
+    assert "correlation_id" in out
 
 
-def test_dispatches_to_registered(monkeypatch):
-    monkeypatch.setattr(tools, "_get_chat_titles",
-                        lambda user_id, since_iso, limit=30: {"count": 0, "items": []})
-    monkeypatch.setattr(tools, "_REGISTRY",
-                        {"get_chat_titles": tools._get_chat_titles})
+def test_tool_exception_does_not_leak_message(monkeypatch: pytest.MonkeyPatch):
+    def boom(**_kwargs):
+        raise RuntimeError("postgres password auth failed for user admin")
+    monkeypatch.setattr(tools, "_get_chat_titles", boom)
 
+    out = json.loads(tools.call_tool(
+        "get_chat_titles",
+        json.dumps({"user_id": "u", "since_iso": "2026-04-14T00:00:00+00:00"}),
+    ))
+
+    assert out["error_code"] == "tool_failed"
+    assert "postgres" not in json.dumps(out)
+    assert "password" not in json.dumps(out)
+
+
+def test_monkeypatch_flows_through_without_registry_rebuild(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        tools, "_get_chat_titles",
+        lambda user_id, since_iso, limit=30: {"count": 0, "items": []},
+    )
     out = json.loads(tools.call_tool(
         "get_chat_titles",
         json.dumps({"user_id": "u", "since_iso": "2026-04-14T00:00:00+00:00"}),

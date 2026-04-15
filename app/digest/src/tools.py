@@ -9,10 +9,16 @@ Langfuse traces.
 from __future__ import annotations
 
 import json
+import sys
+import uuid
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
+
+import structlog
 
 from .langfuse_client import _client as _lf_client
+
+log = structlog.get_logger()
 
 # JSON Schemas registered with the LLM (OpenAI tool-calling format — LiteLLM
 # translates to Anthropic tool_use for the azure_ai/claude-* route).
@@ -90,20 +96,30 @@ def _get_usage_stats(user_id: str, since_iso: str) -> dict[str, Any]:
     }
 
 
-_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
-    "get_chat_titles": _get_chat_titles,
-    "get_usage_stats": _get_usage_stats,
-}
+ALLOWED_TOOLS: frozenset[str] = frozenset({"get_chat_titles", "get_usage_stats"})
 
 
 def call_tool(name: str, arguments_json: str) -> str:
-    """Dispatch a tool call and return its JSON-serialised result."""
-    fn = _REGISTRY.get(name)
+    """Dispatch a tool call and return a JSON-serialised result.
+
+    Lookup happens at call time via sys.modules so monkeypatching the
+    module attributes in tests takes effect without needing to rebuild
+    a registry.
+    """
+    if name not in ALLOWED_TOOLS:
+        return json.dumps({"error_code": "unknown_tool", "name": name})
+
+    fn = getattr(sys.modules[__name__], f"_{name}", None)
     if fn is None:
-        return json.dumps({"error": f"unknown tool: {name}"})
+        return json.dumps({"error_code": "unknown_tool", "name": name})
+
+    correlation_id = str(uuid.uuid4())
     try:
         args = json.loads(arguments_json or "{}")
         result = fn(**args)
         return json.dumps(result)
     except Exception as exc:  # noqa: BLE001
-        return json.dumps({"error": str(exc)})
+        # Keep the real error out of the LLM context — only return a code + id.
+        # Full details go to structlog so ops can correlate.
+        log.exception("tool_failed", tool=name, correlation_id=correlation_id, error=str(exc))
+        return json.dumps({"error_code": "tool_failed", "correlation_id": correlation_id})

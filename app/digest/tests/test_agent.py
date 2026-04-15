@@ -55,11 +55,6 @@ def stub_tools(monkeypatch: pytest.MonkeyPatch):
             "top_models": [{"name": "claude-haiku-4-5", "count": 2}],
         },
     )
-    # rebuild the dispatch registry to pick up our patched functions
-    monkeypatch.setattr(
-        tools, "_REGISTRY",
-        {"get_chat_titles": tools._get_chat_titles, "get_usage_stats": tools._get_usage_stats},
-    )
 
 
 def test_agent_calls_tools_then_composes_summary(stub_llm: MagicMock):
