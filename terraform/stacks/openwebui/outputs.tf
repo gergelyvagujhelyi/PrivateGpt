@@ -31,3 +31,11 @@ output "digest_enabled" {
 output "digest_sender_address" {
   value = try(module.communication_services[0].sender_address, null)
 }
+
+output "rag_enabled" {
+  value = local.rag_enabled
+}
+
+output "rag_container_name" {
+  value = module.storage.rag_sources_container_name
+}

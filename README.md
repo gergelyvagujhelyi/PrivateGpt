@@ -31,6 +31,7 @@ app/
   openwebui/         Dockerfile + config layered on upstream OpenWebUI
   litellm/           Dockerfile + router config
   digest/            optional digest worker (Python, Container Apps Job)
+  rag/               optional RAG ingestion worker (Blob → chunk → embed → pgvector)
   models.yaml        single source of truth → drives AOAI + LiteLLM config
 
 .azuredevops/
@@ -99,6 +100,18 @@ Communication Services.
 Users opt in through the `user_preferences` table. Every email carries an
 HMAC-signed unsubscribe link. The full agent trace (tool calls,
 arguments, results, final message) shows up in Langfuse per run.
+
+### `rag` — per-client document ingestion
+
+A second Container Apps Job runs on cron, lists blobs under
+`<namespace>/<path>` in the shared RAG container, extracts text (PDF,
+DOCX, MD, TXT), chunks (`RecursiveCharacterTextSplitter`), embeds with
+`text-embedding-3-large` through LiteLLM (traced in Langfuse), and
+writes to `rag_chunks` in the same Postgres with an HNSW index on
+`vector_cosine_ops`. Idempotent via ETag tracking in `rag_sources`.
+
+Retrieval is exposed both as a CLI (`python -m src.retrieve "<query>"`)
+and directly importable as a tool that agents can call.
 
 ## Local development
 
