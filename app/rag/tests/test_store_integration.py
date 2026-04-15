@@ -96,3 +96,24 @@ def test_namespace_isolation(pg_url: str):
         b = similarity_search(conn, "tenant-b", _vec(1.0), top_k=10)
         assert all(h["content"] == "a-side" for h in a)
         assert all(h["content"] == "b-side" for h in b)
+
+
+def test_is_already_ingested_blocks_duplicate_etag(pg_url: str):
+    """Same (namespace, uri, etag) must register as already-ingested so the
+    next run skips the download + embed cost entirely."""
+    with connect(pg_url) as conn:
+        ensure_schema(conn)
+        conn.commit()
+
+        assert not is_already_ingested(conn, "ns3", "spec.md", "etag-AAA")
+
+        sid = upsert_source(conn, "ns3", "spec.md", "etag-AAA", "text/markdown", 128)
+        write_chunks(conn, sid, "ns3", [(0, "content", _vec(1.0), {})])
+        conn.commit()
+
+        assert is_already_ingested(conn, "ns3", "spec.md", "etag-AAA") is True
+
+        # Any single component differing must register as new.
+        assert not is_already_ingested(conn, "ns3", "spec.md", "etag-BBB")
+        assert not is_already_ingested(conn, "ns3", "other.md", "etag-AAA")
+        assert not is_already_ingested(conn, "other-ns", "spec.md", "etag-AAA")
