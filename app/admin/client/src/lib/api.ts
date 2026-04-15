@@ -29,12 +29,13 @@ async function call<T>(path: string, token: string, init: RequestInit = {}): Pro
 export function useApi() {
   const msal = useMsal();
   return {
-    getUsage: async (userId: string): Promise<UsageSummary> =>
-      call(`/usage/${encodeURIComponent(userId)}`, await getToken(msal)),
-    getPreferences: async (userId: string): Promise<Preferences> =>
-      call(`/preferences/${encodeURIComponent(userId)}`, await getToken(msal)),
-    updatePreferences: async (userId: string, patch: Partial<Preferences>): Promise<Preferences> =>
-      call(`/preferences/${encodeURIComponent(userId)}`, await getToken(msal), {
+    // Identity is resolved server-side from the bearer token; client uses /me.
+    getUsage: async (): Promise<UsageSummary> =>
+      call("/usage/me", await getToken(msal)),
+    getPreferences: async (): Promise<Preferences> =>
+      call("/preferences/me", await getToken(msal)),
+    updatePreferences: async (patch: Partial<Preferences>): Promise<Preferences> =>
+      call("/preferences/me", await getToken(msal), {
         method: "PUT",
         body: JSON.stringify(patch),
       }),

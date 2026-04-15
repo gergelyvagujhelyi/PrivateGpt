@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PreferencesPatchSchema, PreferencesSchema } from "../../shared/schema.ts";
+import { PreferencesPatchSchema, PreferencesSchema } from "../../shared/schema.js";
 
 describe("schema contracts", () => {
   it("rejects unknown digest frequency", () => {

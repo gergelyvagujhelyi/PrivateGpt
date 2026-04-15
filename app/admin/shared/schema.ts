@@ -15,7 +15,9 @@ export type PreferencesPatch = z.infer<typeof PreferencesPatchSchema>;
 
 export const ModelSchema = z.object({
   name: z.string(),
-  provider: z.enum(["openai", "anthropic"]),
+  // Defaults to "openai" so this branch works before the Foundry PR lands,
+  // which introduces an explicit `provider` field in app/models.yaml.
+  provider: z.enum(["openai", "anthropic"]).default("openai"),
   purpose: z.enum(["chat", "embedding", "reranker"]),
   exposedAs: z.string(),
 });

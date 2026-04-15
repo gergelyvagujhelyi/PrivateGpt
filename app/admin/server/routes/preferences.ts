@@ -1,23 +1,21 @@
 import { Router } from "express";
 
-import { pool } from "../db.ts";
-import { PreferencesPatchSchema, PreferencesSchema } from "../../shared/schema.ts";
+import { pool } from "../db.js";
+import { PreferencesPatchSchema, PreferencesSchema } from "../../shared/schema.js";
 
 export const preferencesRouter = Router();
 
-preferencesRouter.get("/:userId", async (req, res) => {
-  if (req.params.userId !== (req as express.Request & { userId?: string }).userId) {
-    return res.status(403).json({ error: "can only read your own preferences" });
-  }
+preferencesRouter.get("/me", async (req, res) => {
+  const userId = req.openwebuiUserId!;
   const { rows } = await pool().query(
     `SELECT user_id, digest_frequency, unsubscribed_at, last_sent_at
        FROM user_preferences WHERE user_id = $1`,
-    [req.params.userId],
+    [userId],
   );
   if (rows.length === 0) {
     return res.json(
       PreferencesSchema.parse({
-        userId: req.params.userId,
+        userId,
         digestFrequency: "off",
         unsubscribedAt: null,
         lastSentAt: null,
@@ -35,10 +33,8 @@ preferencesRouter.get("/:userId", async (req, res) => {
   );
 });
 
-preferencesRouter.put("/:userId", async (req, res) => {
-  if (req.params.userId !== (req as express.Request & { userId?: string }).userId) {
-    return res.status(403).json({ error: "can only update your own preferences" });
-  }
+preferencesRouter.put("/me", async (req, res) => {
+  const userId = req.openwebuiUserId!;
   const patch = PreferencesPatchSchema.parse(req.body);
   const { rows } = await pool().query(
     `INSERT INTO user_preferences (user_id, digest_frequency)
@@ -47,7 +43,7 @@ preferencesRouter.put("/:userId", async (req, res) => {
        SET digest_frequency = EXCLUDED.digest_frequency,
            updated_at       = NOW()
      RETURNING user_id, digest_frequency, unsubscribed_at, last_sent_at`,
-    [req.params.userId, patch.digestFrequency ?? "off"],
+    [userId, patch.digestFrequency ?? "off"],
   );
   const row = rows[0];
   res.json(
@@ -59,5 +55,3 @@ preferencesRouter.put("/:userId", async (req, res) => {
     }),
   );
 });
-
-import type express from "express";

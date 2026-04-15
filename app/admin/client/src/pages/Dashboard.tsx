@@ -1,17 +1,13 @@
-import { useMsal } from "@azure/msal-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useApi } from "../lib/api";
 
 export function Dashboard() {
-  const msal = useMsal();
-  const userId = msal.accounts[0]?.homeAccountId ?? "";
   const api = useApi();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["usage", userId],
-    queryFn: () => api.getUsage(userId),
-    enabled: Boolean(userId),
+    queryKey: ["usage", "me"],
+    queryFn: () => api.getUsage(),
   });
 
   if (isLoading) return <p>Loading…</p>;

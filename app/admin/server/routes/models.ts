@@ -4,7 +4,7 @@ import path from "node:path";
 import { Router } from "express";
 import { parse as parseYaml } from "yaml";
 
-import { ModelCatalogueSchema } from "../../shared/schema.ts";
+import { ModelCatalogueSchema } from "../../shared/schema.js";
 
 const CATALOGUE_PATH = process.env.MODELS_YAML_PATH ?? path.resolve("/etc/admin/models.yaml");
 
