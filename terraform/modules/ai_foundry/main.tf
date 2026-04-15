@@ -8,6 +8,11 @@ variable "private_dns_zone_ids" {
   description = "All DNS zones the AI Services PE should register in (cognitiveservices + services.ai)."
 }
 
+variable "blob_private_dns_zone_id" {
+  type        = string
+  description = "privatelink.blob.core.windows.net zone — hub storage PE registers here."
+}
+
 variable "log_analytics_id" { type = string }
 variable "key_vault_id" { type = string }
 variable "application_insights_id" { type = string }
@@ -55,6 +60,29 @@ resource "azurerm_storage_account" "hub" {
   tags = var.tags
 }
 
+# Hub workspace needs reachable blob storage; without a PE the workspace
+# creation would fail against the public-access-disabled account.
+resource "azurerm_private_endpoint" "hub_storage_blob" {
+  name                = "pe-${azurerm_storage_account.hub.name}-blob"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  subnet_id           = var.private_endpoint_subnet_id
+
+  private_service_connection {
+    name                           = "psc"
+    private_connection_resource_id = azurerm_storage_account.hub.id
+    subresource_names              = ["blob"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "blob"
+    private_dns_zone_ids = [var.blob_private_dns_zone_id]
+  }
+
+  tags = var.tags
+}
+
 # ─── AI Services account ───
 resource "azurerm_ai_services" "this" {
   name                  = "ais-${var.name_prefix}"
@@ -87,6 +115,9 @@ resource "azurerm_ai_foundry" "this" {
   }
 
   tags = var.tags
+
+  # Hub validates storage reachability during create — wait for the PE.
+  depends_on = [azurerm_private_endpoint.hub_storage_blob]
 }
 
 resource "azurerm_ai_foundry_project" "this" {
@@ -194,7 +225,7 @@ resource "azurerm_key_vault_secret" "claude_keys" {
   for_each = azapi_resource.claude
 
   name         = "foundry-maas-${each.key}-key"
-  value        = jsondecode(data.azapi_resource_action.claude_keys[each.key].output).primaryKey
+  value        = data.azapi_resource_action.claude_keys[each.key].output.primaryKey
   key_vault_id = var.key_vault_id
 }
 
@@ -219,7 +250,7 @@ output "deployments" {
 }
 
 output "claude_endpoints" {
-  value     = { for k, d in azapi_resource.claude : k => jsondecode(d.output).properties.inferenceEndpoint.uri }
+  value     = { for k, d in azapi_resource.claude : k => d.output.properties.inferenceEndpoint.uri }
   sensitive = true
 }
 

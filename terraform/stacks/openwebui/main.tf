@@ -82,6 +82,7 @@ module "ai_foundry" {
   location                   = var.location
   private_endpoint_subnet_id = module.network.pe_subnet_id
   private_dns_zone_ids       = module.network.ai_services_private_dns_zone_ids
+  blob_private_dns_zone_id   = module.network.blob_private_dns_zone_id
   log_analytics_id           = module.observability.log_analytics_id
   key_vault_id               = module.keyvault.id
   application_insights_id    = module.observability.app_insights_id
