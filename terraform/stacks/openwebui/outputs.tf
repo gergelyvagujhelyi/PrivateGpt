@@ -39,3 +39,16 @@ output "rag_enabled" {
 output "rag_container_name" {
   value = module.storage.rag_sources_container_name
 }
+
+output "admin_enabled" {
+  value = local.admin_enabled
+}
+
+output "admin_fqdn" {
+  value = try(module.admin[0].fqdn, null)
+}
+
+output "admin_public_url" {
+  value       = try(module.frontdoor.secondary_endpoints["admin"], null)
+  description = "Public URL users sign in to for the admin UI (Entra reply URL target)."
+}

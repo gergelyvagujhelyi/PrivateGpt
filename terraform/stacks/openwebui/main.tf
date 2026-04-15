@@ -250,7 +250,13 @@ module "frontdoor" {
   origin_host_header  = module.openwebui.fqdn
   allowed_ip_ranges   = var.allowed_ip_ranges
   log_analytics_id    = module.observability.log_analytics_id
-  tags                = local.base_tags
+
+  # Each enabled secondary feature that needs public reach gets its own Front Door endpoint.
+  secondary_origins = merge(
+    local.admin_enabled ? { admin = { host_name = module.admin[0].fqdn } } : {},
+  )
+
+  tags = local.base_tags
 }
 
 # ─────────────────────────────────────────────────────────────────────
@@ -377,6 +383,48 @@ resource "azurerm_role_assignment" "rag_blob_reader" {
   scope                = module.storage.id
   role_definition_name = "Storage Blob Data Reader"
   principal_id         = module.rag_ingest[0].principal_id
+}
+
+# ─── Admin UI (optional TypeScript + React Container App) ───
+
+locals {
+  admin_enabled = try(var.features.admin_ui.enabled, false)
+}
+
+module "admin" {
+  count  = local.admin_enabled ? 1 : 0
+  source = "../../modules/container_app"
+
+  name                 = "admin"
+  name_prefix          = local.name_prefix
+  resource_group_name  = azurerm_resource_group.this.name
+  container_app_env_id = module.container_app_env.id
+  image                = var.admin_image
+  target_port          = 4000
+  ingress_external     = false
+  key_vault_id         = module.keyvault.id
+
+  env = [
+    { name = "DATABASE_URL",         secret_name = "openwebui-db-url" },
+    { name = "LANGFUSE_HOST",        value       = "https://${module.langfuse.fqdn}" },
+    { name = "LANGFUSE_PUBLIC_KEY",  secret_name = "langfuse-pk" },
+    { name = "LANGFUSE_SECRET_KEY",  secret_name = "langfuse-sk" },
+    { name = "ENTRA_TENANT_ID",      value       = data.azurerm_client_config.current.tenant_id },
+    { name = "ADMIN_API_AUDIENCE",   value       = var.entra_admin_app_client_id },
+  ]
+
+  secrets = {
+    "openwebui-db-url" = module.postgres.openwebui_connection_string
+    "langfuse-pk"      = module.keyvault.langfuse_pk_ref
+    "langfuse-sk"      = module.keyvault.langfuse_sk_ref
+  }
+
+  cpu    = 0.5
+  memory = "1Gi"
+  min_replicas = 1
+  max_replicas = 3
+
+  tags = local.base_tags
 }
 
 data "azurerm_client_config" "current" {}

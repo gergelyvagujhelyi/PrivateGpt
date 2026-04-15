@@ -49,6 +49,17 @@ stages:
               mypy scripts/ app/digest/src app/rag/src --ignore-missing-imports
             displayName: Python lint + types
 
+          - task: NodeTool@0
+            inputs: { versionSpec: '22.x' }
+
+          - script: |
+              cd app/admin
+              npm ci
+              npm run lint
+              npm run typecheck
+              npm test
+            displayName: Admin UI lint + types + tests
+
           - script: |
               pytest app/digest/tests -q \
                 --junitxml=digest-unit.xml \
@@ -96,10 +107,11 @@ stages:
         pool: { vmImage: ubuntu-latest }
         strategy:
           matrix:
-            openwebui: { image: openwebui, context: app/openwebui }
-            litellm:   { image: litellm,   context: app/litellm }
-            digest:    { image: digest,    context: app/digest }
-            rag:       { image: rag,       context: app/rag }
+            openwebui: { image: openwebui, context: app/openwebui, dockerfile: app/openwebui/Dockerfile }
+            litellm:   { image: litellm,   context: app/litellm,   dockerfile: app/litellm/Dockerfile }
+            digest:    { image: digest,    context: app/digest,    dockerfile: app/digest/Dockerfile }
+            rag:       { image: rag,       context: app/rag,       dockerfile: app/rag/Dockerfile }
+            admin:     { image: admin,     context: .,             dockerfile: app/admin/Dockerfile }
         steps:
           - checkout: self
 
@@ -113,6 +125,7 @@ stages:
                 set -euo pipefail
                 az acr login -n $(acrName)
                 docker build \
+                  -f $(dockerfile) \
                   --label org.opencontainers.image.revision=$(sha) \
                   --label org.opencontainers.image.source=$(Build.Repository.Uri) \
                   -t $(acrName).azurecr.io/$(image):$(sha) \
