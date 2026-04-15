@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS rag_sources (
     UNIQUE (namespace, source_uri, etag)
 );
 
+-- Dimension 3072 matches text-embedding-3-large (src/embed.py:EMBEDDING_DIM).
+-- A model swap needs a schema migration before deploy; embed.py fails fast if
+-- the model returns a different dim.
 CREATE TABLE IF NOT EXISTS rag_chunks (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source_id   UUID NOT NULL REFERENCES rag_sources(id) ON DELETE CASCADE,

@@ -42,9 +42,11 @@ stages:
             inputs: { versionSpec: '3.12' }
 
           - script: |
-              pip install -r scripts/requirements.txt -r app/digest/requirements-dev.txt
-              ruff check scripts/ app/digest/
-              mypy scripts/ app/digest/src --ignore-missing-imports
+              pip install -r scripts/requirements.txt \
+                          -r app/digest/requirements-dev.txt \
+                          -r app/rag/requirements-dev.txt
+              ruff check scripts/ app/digest/ app/rag/
+              mypy scripts/ app/digest/src app/rag/src --ignore-missing-imports
             displayName: Python lint + types
 
           - script: |
@@ -53,9 +55,16 @@ stages:
                 --cov=app/digest/src --cov-report=xml:digest-coverage.xml
             displayName: Digest unit + integration tests
 
+          - script: |
+              pytest app/rag/tests -q \
+                --junitxml=rag-unit.xml \
+                --cov=app/rag/src --cov-report=xml:rag-coverage.xml
+            displayName: RAG unit + integration tests
+
           - task: PublishTestResults@2
             condition: succeededOrFailed()
-            inputs: { testResultsFiles: digest-unit.xml, testRunTitle: digest }
+            inputs:
+              testResultsFiles: '**/{digest,rag}-unit.xml'
 
           - task: PublishCodeCoverageResults@2
             condition: succeededOrFailed()
