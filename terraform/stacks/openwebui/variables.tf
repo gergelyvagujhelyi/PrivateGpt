@@ -43,18 +43,34 @@ variable "langfuse_image" {
   default     = "langfuse/langfuse:2"
 }
 
-variable "aoai_models" {
-  type = list(object({
-    name     = string
+variable "foundry_deployments" {
+  description = "Model deployments on Azure AI Foundry. provider = openai | anthropic"
+  type = map(object({
+    provider = string
+    model    = string
     version  = string
-    sku_name = string
-    capacity = number
+    sku_name = optional(string, "Standard")
+    capacity = optional(number, 50)
   }))
-  description = "Azure OpenAI model deployments"
-  default = [
-    { name = "gpt-4o", version = "2024-08-06", sku_name = "Standard", capacity = 50 },
-    { name = "text-embedding-3-large", version = "1", sku_name = "Standard", capacity = 50 },
-  ]
+  default = {
+    "claude-sonnet-4-5" = {
+      provider = "anthropic"
+      model    = "claude-sonnet-4-5"
+      version  = "1"
+    }
+    "claude-haiku-4-5" = {
+      provider = "anthropic"
+      model    = "claude-haiku-4-5"
+      version  = "1"
+    }
+    "text-embedding-3-large" = {
+      provider = "openai"
+      model    = "text-embedding-3-large"
+      version  = "1"
+      sku_name = "Standard"
+      capacity = 50
+    }
+  }
 }
 
 variable "entra_group_admins_object_id" {

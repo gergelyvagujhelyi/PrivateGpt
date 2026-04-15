@@ -1,7 +1,4 @@
-"""Render LiteLLM config.yaml from the declarative models.yaml catalogue.
-
-Kept deliberately small. The output is committed and reviewed in PRs.
-"""
+"""Render LiteLLM config.yaml from the declarative models.yaml catalogue."""
 
 from __future__ import annotations
 
@@ -11,23 +8,39 @@ import sys
 import yaml
 
 
+def _env_suffix(name: str) -> str:
+    return name.upper().replace("-", "_")
+
+
+def _params_for(m: dict) -> dict:
+    provider = m.get("provider", "openai")
+    if provider == "anthropic":
+        suffix = _env_suffix(m["name"])
+        return {
+            "model": f"azure_ai/{m['name']}",
+            "api_base": f"os.environ/ENDPOINT_{suffix}",
+            "api_key": f"os.environ/KEY_{suffix}",
+            **({"rpm": m["rpm"]} if m.get("rpm") else {}),
+            **({"tpm": m["tpm"]} if m.get("tpm") else {}),
+        }
+    return {
+        "model": f"azure/{m['name']}",
+        "api_base": "os.environ/AZURE_API_BASE",
+        "api_key": "os.environ/AZURE_API_KEY",
+        "api_version": "os.environ/AZURE_API_VERSION",
+        **({"rpm": m["rpm"]} if m.get("rpm") else {}),
+        **({"tpm": m["tpm"]} if m.get("tpm") else {}),
+    }
+
+
 def render(models_path: str) -> str:
     with open(models_path) as f:
         catalogue = yaml.safe_load(f)
 
-    model_list = []
-    for m in catalogue["models"]:
-        params = {
-            "model": f"azure/{m['name']}",
-            "api_base": "os.environ/AZURE_API_BASE",
-            "api_key": "os.environ/AZURE_API_KEY",
-            "api_version": "os.environ/AZURE_API_VERSION",
-        }
-        if m.get("rpm"):
-            params["rpm"] = m["rpm"]
-        if m.get("tpm"):
-            params["tpm"] = m["tpm"]
-        model_list.append({"model_name": m["exposed_as"], "litellm_params": params})
+    model_list = [
+        {"model_name": m["exposed_as"], "litellm_params": _params_for(m)}
+        for m in catalogue["models"]
+    ]
 
     config = {
         "model_list": model_list,
@@ -58,13 +71,12 @@ def main() -> int:
     ap.add_argument("models_yaml")
     ap.add_argument("--out", default="-")
     args = ap.parse_args()
-
-    rendered = render(args.models_yaml)
+    out = render(args.models_yaml)
     if args.out == "-":
-        sys.stdout.write(rendered)
+        sys.stdout.write(out)
     else:
         with open(args.out, "w") as f:
-            f.write(rendered)
+            f.write(out)
     return 0
 
 

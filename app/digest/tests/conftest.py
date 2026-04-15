@@ -32,6 +32,6 @@ def _baseline_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(k, v)
 
     # lru_cache in lazy clients would leak state across tests.
-    from src import langfuse_client, summariser
+    from src import agent, langfuse_client
     langfuse_client._client.cache_clear()
-    summariser._client.cache_clear()
+    agent._client.cache_clear()

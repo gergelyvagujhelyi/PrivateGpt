@@ -11,7 +11,7 @@ import pytest
 from langfuse import Langfuse
 from openai import OpenAI
 
-MODEL = "gpt-4o-mini"
+MODEL = "claude-haiku-4-5"
 
 
 @dataclass

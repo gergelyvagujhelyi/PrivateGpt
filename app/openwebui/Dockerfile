@@ -12,7 +12,7 @@ ENV WEBUI_NAME="Client Assistant" \
     DEFAULT_USER_ROLE=user \
     ENABLE_COMMUNITY_SHARING=false \
     ENABLE_MESSAGE_RATING=true \
-    TASK_MODEL="gpt-4o-mini" \
+    TASK_MODEL="claude-haiku-4-5" \
     RAG_EMBEDDING_MODEL="text-embedding-3-large"
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \

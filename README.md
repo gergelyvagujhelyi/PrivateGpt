@@ -1,15 +1,15 @@
 # PrivateGpt — OpenWebUI on Azure
 
 Per-client private AI chat on Azure, scripted end-to-end.
-**OpenWebUI + Azure OpenAI + Langfuse**, delivered through Terraform and
-Azure DevOps, running in a closed VNet.
+**OpenWebUI + Azure AI Foundry (Claude) + Langfuse**, delivered through
+Terraform and Azure DevOps, running in a closed VNet.
 
 ![Architecture](architecture.png)
 
 ## What's in the box
 
 - Private OpenWebUI on **Azure Container Apps**, reachable only via Front Door + WAF.
-- **Azure OpenAI** (GPT-4o / GPT-4o-mini / text-embedding-3-large) over Private Endpoint.
+- **Azure AI Foundry** with **Claude Sonnet 4.5** + **Claude Haiku 4.5** (MaaS) and `text-embedding-3-large`, all over Private Endpoint.
 - **LiteLLM** sidecar as the single OpenAI-compatible endpoint — multi-model routing, per-user budgets.
 - **Langfuse** (self-hosted) for LLM tracing, cost visibility, and CI eval gates.
 - **Postgres Flexible Server** with **pgvector** for both OpenWebUI state and RAG embeddings.
@@ -92,11 +92,13 @@ features = {
 
 ### `digest` — scheduled per-user summary emails
 
-A Container Apps Job runs on cron, pulls each opted-in user's activity
-from Langfuse, summarises it via `gpt-4o-mini`, and delivers the email
-via Azure Communication Services.
+A Container Apps Job runs on cron, invokes a **tool-calling agent**
+powered by Claude Haiku 4.5 (`get_chat_titles` / `get_usage_stats`) to
+compose each user's recap, and delivers the email via Azure
+Communication Services.
 Users opt in through the `user_preferences` table. Every email carries an
-HMAC-signed unsubscribe link.
+HMAC-signed unsubscribe link. The full agent trace (tool calls,
+arguments, results, final message) shows up in Langfuse per run.
 
 ## Local development
 

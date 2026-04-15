@@ -1,46 +1,28 @@
-"""Contract test for the summariser — it must use the SYSTEM_PROMPT unchanged
-and call LiteLLM with deterministic parameters. We stub the LiteLLM client so
-no network is touched; the eval suite covers real-LLM behaviour."""
+"""Shim contract: `summariser.summarise(user_id, since)` delegates to the agent
+so legacy call sites keep working. Agent internals are tested in test_agent.py."""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
 
 from src import summariser
-from src.langfuse_client import Activity, Stats
 
 
-@pytest.fixture
-def stub_llm(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    mock = MagicMock()
-    mock.chat.completions.create.return_value = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content="- bullet one\n- bullet two"))]
-    )
-    monkeypatch.setattr(summariser, "_client", lambda: mock)
-    return mock
+def test_shim_delegates_to_agent(monkeypatch: pytest.MonkeyPatch):
+    called = MagicMock(return_value="- recap bullet")
+    monkeypatch.setattr(summariser, "_agent_summarise", called)
+
+    out = summariser.summarise("u1", datetime(2026, 4, 14, tzinfo=timezone.utc))
+
+    assert out == "- recap bullet"
+    called.assert_called_once()
+    args = called.call_args.args
+    assert args[0] == "u1"
+    assert args[1].year == 2026
 
 
-def test_summariser_uses_system_prompt(stub_llm: MagicMock) -> None:
-    activity = Activity(
-        traces=[{"name": "draft email", "tags": []}],
-        stats=Stats(trace_count=1),
-    )
-    out = summariser.summarise(activity)
-    assert out == "- bullet one\n- bullet two"
-
-    call = stub_llm.chat.completions.create.call_args
-    messages = call.kwargs["messages"]
-    assert messages[0]["role"] == "system"
-    assert messages[0]["content"] == summariser.SYSTEM_PROMPT
-    assert call.kwargs["temperature"] == 0
-    assert call.kwargs["model"] == "gpt-4o-mini"
-
-
-def test_summariser_handles_empty(stub_llm: MagicMock) -> None:
-    activity = Activity(traces=[], stats=Stats())
-    summariser.summarise(activity)
-    user_msg = stub_llm.chat.completions.create.call_args.kwargs["messages"][1]["content"]
-    assert "(none)" in user_msg
+def test_exposes_system_prompt():
+    assert "Never echo raw prompts" in summariser.SYSTEM_PROMPT

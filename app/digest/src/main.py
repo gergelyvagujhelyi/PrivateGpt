@@ -19,10 +19,10 @@ import psycopg
 import structlog
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from .agent import summarise
 from .email_sender import EmailSender
 from .langfuse_client import fetch_user_activity
 from .migrations import ensure_schema
-from .summariser import summarise
 from .unsub import sign_token
 
 log = structlog.get_logger()
@@ -84,7 +84,7 @@ def run() -> int:
                     conn.commit()
                     continue
 
-                summary = summarise(activity)
+                summary = summarise(user_id=str(user["id"]), since=since)
                 unsub_url = f"{PUBLIC_BASE_URL}/unsubscribe?t={sign_token(str(user['id']))}"
 
                 html = template.render(

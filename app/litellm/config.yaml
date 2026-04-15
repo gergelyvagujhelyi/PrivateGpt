@@ -1,25 +1,23 @@
-# Rendered by the app pipeline from models.yaml + env.
-# Secrets (AZURE_API_KEY, LANGFUSE_*, LITELLM_MASTER_KEY) are injected as env vars
-# from Key Vault refs by the Container App.
+# Rendered by scripts/render_litellm_config.py from app/models.yaml.
+# Each Anthropic (Claude) MaaS model has its OWN inferenceEndpoint.uri and key,
+# supplied by Terraform as ENDPOINT_<NAME> / KEY_<NAME> env vars.
 
 model_list:
-  - model_name: gpt-4o
+  - model_name: claude-sonnet-4-5
     litellm_params:
-      model: azure/gpt-4o
-      api_base: os.environ/AZURE_API_BASE
-      api_key: os.environ/AZURE_API_KEY
-      api_version: os.environ/AZURE_API_VERSION
-      rpm: 240
-      tpm: 200000
+      model: azure_ai/claude-sonnet-4-5
+      api_base: os.environ/ENDPOINT_CLAUDE_SONNET_4_5
+      api_key: os.environ/KEY_CLAUDE_SONNET_4_5
+      rpm: 100
+      tpm: 100000
 
-  - model_name: gpt-4o-mini
+  - model_name: claude-haiku-4-5
     litellm_params:
-      model: azure/gpt-4o-mini
-      api_base: os.environ/AZURE_API_BASE
-      api_key: os.environ/AZURE_API_KEY
-      api_version: os.environ/AZURE_API_VERSION
-      rpm: 600
-      tpm: 600000
+      model: azure_ai/claude-haiku-4-5
+      api_base: os.environ/ENDPOINT_CLAUDE_HAIKU_4_5
+      api_key: os.environ/KEY_CLAUDE_HAIKU_4_5
+      rpm: 300
+      tpm: 300000
 
   - model_name: text-embedding-3-large
     litellm_params:
@@ -37,7 +35,6 @@ router_settings:
 
 litellm_settings:
   drop_params: true
-  set_verbose: false
   success_callback: ["langfuse"]
   failure_callback: ["langfuse"]
   cache: true
@@ -47,7 +44,6 @@ litellm_settings:
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
-  database_url: null
   enforce_user_param: true
   max_budget: 5000
   budget_duration: 30d

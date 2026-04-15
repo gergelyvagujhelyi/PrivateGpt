@@ -74,17 +74,38 @@ module "storage" {
   tags                       = local.base_tags
 }
 
-module "openai" {
-  source = "../../modules/openai"
+module "ai_foundry" {
+  source = "../../modules/ai_foundry"
 
   name_prefix                = local.name_prefix
   resource_group_name        = azurerm_resource_group.this.name
   location                   = var.location
   private_endpoint_subnet_id = module.network.pe_subnet_id
-  private_dns_zone_id        = module.network.openai_private_dns_zone_id
+  private_dns_zone_ids       = module.network.ai_services_private_dns_zone_ids
+  blob_private_dns_zone_id   = module.network.blob_private_dns_zone_id
   log_analytics_id           = module.observability.log_analytics_id
-  model_deployments          = var.aoai_models
+  key_vault_id               = module.keyvault.id
+  application_insights_id    = module.observability.app_insights_id
+  deployments                = var.foundry_deployments
   tags                       = local.base_tags
+}
+
+# Per-MaaS-deployment env vars: LiteLLM's azure_ai/* route needs the exact
+# inferenceEndpoint.uri for each Claude model. We upper-case the model key
+# and hand each one to the LiteLLM container.
+locals {
+  claude_endpoint_env = [
+    for name, uri in module.ai_foundry.claude_endpoints :
+    { name = "ENDPOINT_${replace(upper(name), "-", "_")}", value = uri }
+  ]
+  claude_key_secret_env = [
+    for name, _ in module.ai_foundry.claude_key_secret_refs :
+    { name = "KEY_${replace(upper(name), "-", "_")}", secret_name = "maas-${name}-key" }
+  ]
+  claude_key_secret_map = {
+    for name, ref in module.ai_foundry.claude_key_secret_refs :
+    "maas-${name}-key" => ref
+  }
 }
 
 module "container_app_env" {
@@ -144,22 +165,29 @@ module "litellm" {
   ingress_external     = false
   key_vault_id         = module.keyvault.id
 
-  env = [
-    { name = "AZURE_API_KEY", secret_name = "aoai-key" },
-    { name = "AZURE_API_BASE", value = module.openai.endpoint },
-    { name = "AZURE_API_VERSION", value = "2024-08-01-preview" },
-    { name = "LANGFUSE_PUBLIC_KEY", secret_name = "langfuse-pk" },
-    { name = "LANGFUSE_SECRET_KEY", secret_name = "langfuse-sk" },
-    { name = "LANGFUSE_HOST", value = "https://${module.langfuse.fqdn}" },
-    { name = "LITELLM_MASTER_KEY", secret_name = "litellm-master-key" },
-  ]
+  env = concat(
+    [
+      { name = "AZURE_API_KEY",       secret_name = "foundry-ai-services-key" },
+      { name = "AZURE_API_BASE",      value       = module.ai_foundry.endpoint },
+      { name = "AZURE_API_VERSION",   value       = "2024-10-21" },
+      { name = "LANGFUSE_PUBLIC_KEY", secret_name = "langfuse-pk" },
+      { name = "LANGFUSE_SECRET_KEY", secret_name = "langfuse-sk" },
+      { name = "LANGFUSE_HOST",       value       = "https://${module.langfuse.fqdn}" },
+      { name = "LITELLM_MASTER_KEY",  secret_name = "litellm-master-key" },
+    ],
+    local.claude_endpoint_env,
+    local.claude_key_secret_env,
+  )
 
-  secrets = {
-    "aoai-key"           = module.openai.key_vault_secret_ref
-    "langfuse-pk"        = module.keyvault.langfuse_pk_ref
-    "langfuse-sk"        = module.keyvault.langfuse_sk_ref
-    "litellm-master-key" = module.keyvault.litellm_master_key_ref
-  }
+  secrets = merge(
+    {
+      "foundry-ai-services-key" = module.ai_foundry.ai_services_key_secret_ref
+      "langfuse-pk"             = module.keyvault.langfuse_pk_ref
+      "langfuse-sk"             = module.keyvault.langfuse_sk_ref
+      "litellm-master-key"      = module.keyvault.litellm_master_key_ref
+    },
+    local.claude_key_secret_map,
+  )
 
   cpu    = 0.5
   memory = "1Gi"
