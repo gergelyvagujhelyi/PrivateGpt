@@ -1,13 +1,16 @@
 import { AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from "@azure/msal-react";
 import { Link, Route, Routes } from "react-router-dom";
 
-import { loginRequest } from "./lib/auth";
+import { buildLoginRequest } from "./lib/auth";
+import { useAppConfig } from "./lib/config-context";
 import { Dashboard } from "./pages/Dashboard";
 import { Models } from "./pages/Models";
 import { Preferences } from "./pages/Preferences";
 
 export function App() {
   const { instance } = useMsal();
+  const cfg = useAppConfig();
+  const loginRequest = buildLoginRequest(cfg);
   return (
     <div style={{ fontFamily: "-apple-system, Segoe UI, sans-serif", maxWidth: 960, margin: "0 auto", padding: 24 }}>
       <header style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>

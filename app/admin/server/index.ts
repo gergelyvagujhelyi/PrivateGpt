@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { verifyEntraJwt } from "./auth.js";
+import { configRouter } from "./routes/config.js";
 import { modelsRouter } from "./routes/models.js";
 import { preferencesRouter } from "./routes/preferences.js";
 import { usageRouter } from "./routes/usage.js";
@@ -16,7 +17,10 @@ app.use(pinoHttp());
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-// Everything under /api requires a valid Entra JWT AND a resolvable OpenWebUI user row.
+// Public — the SPA needs this before it can initialise MSAL.
+app.use("/api/config", configRouter);
+
+// Everything else under /api requires a valid Entra JWT and a resolvable OpenWebUI user row.
 app.use("/api", async (req, res, next) => {
   const auth = req.header("authorization");
   if (!auth?.startsWith("Bearer ")) return res.status(401).json({ error: "missing bearer token" });
