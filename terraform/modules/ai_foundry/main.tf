@@ -2,23 +2,28 @@ variable "name_prefix" { type = string }
 variable "resource_group_name" { type = string }
 variable "location" { type = string }
 variable "private_endpoint_subnet_id" { type = string }
-variable "private_dns_zone_id" { type = string }
+
+variable "private_dns_zone_ids" {
+  type        = list(string)
+  description = "All DNS zones the AI Services PE should register in (cognitiveservices + services.ai)."
+}
+
 variable "log_analytics_id" { type = string }
 variable "key_vault_id" { type = string }
 variable "application_insights_id" { type = string }
 
 variable "deployments" {
   description = <<EOT
-Map of logical name → model deployment. Supports two providers:
-  - provider = "anthropic"  → Claude MaaS serverless endpoint
-  - provider = "openai"     → Azure OpenAI deployment on the hub's AI Services account
+Map of logical name → model deployment.
+  - provider = "anthropic" → Claude MaaS serverless endpoint (per-deployment endpoint + key)
+  - provider = "openai"    → Azure OpenAI deployment on the hub's AI Services account
 EOT
   type = map(object({
-    provider    = string
-    model       = string
-    version     = string
-    sku_name    = optional(string, "Standard")
-    capacity    = optional(number, 50)
+    provider = string
+    model    = string
+    version  = string
+    sku_name = optional(string, "Standard")
+    capacity = optional(number, 50)
   }))
 }
 
@@ -26,7 +31,31 @@ variable "tags" { type = map(string) }
 
 data "azurerm_client_config" "current" {}
 
-# ─── AI Services account (backs the Foundry hub for OpenAI-compat models) ───
+resource "random_string" "suffix" {
+  length  = 5
+  lower   = true
+  numeric = true
+  upper   = false
+  special = false
+}
+
+# ─── Storage account backing the Foundry hub ───
+resource "azurerm_storage_account" "hub" {
+  name                            = substr("sthub${replace(var.name_prefix, "-", "")}${random_string.suffix.result}", 0, 24)
+  resource_group_name             = var.resource_group_name
+  location                        = var.location
+  account_tier                    = "Standard"
+  account_replication_type        = "LRS"
+  account_kind                    = "StorageV2"
+  min_tls_version                 = "TLS1_2"
+  public_network_access_enabled   = false
+  allow_nested_items_to_be_public = false
+  shared_access_key_enabled       = true
+
+  tags = var.tags
+}
+
+# ─── AI Services account ───
 resource "azurerm_ai_services" "this" {
   name                  = "ais-${var.name_prefix}"
   resource_group_name   = var.resource_group_name
@@ -49,7 +78,7 @@ resource "azurerm_ai_foundry" "this" {
   resource_group_name = var.resource_group_name
   location            = var.location
 
-  storage_account_id      = null
+  storage_account_id      = azurerm_storage_account.hub.id
   key_vault_id            = var.key_vault_id
   application_insights_id = var.application_insights_id
 
@@ -73,8 +102,6 @@ resource "azurerm_ai_foundry_project" "this" {
 }
 
 # ─── Model deployments ───
-
-# Azure OpenAI deployments (provider = "openai"): native cognitive_deployment on the AI Services account.
 resource "azurerm_cognitive_deployment" "openai" {
   for_each = { for k, v in var.deployments : k => v if v.provider == "openai" }
 
@@ -95,8 +122,6 @@ resource "azurerm_cognitive_deployment" "openai" {
   rai_policy_name = "Microsoft.DefaultV2"
 }
 
-# Anthropic Claude deployments (provider = "anthropic"): MaaS serverless endpoint under the Foundry project.
-# azurerm has no first-class resource for this yet → azapi.
 resource "azapi_resource" "claude" {
   for_each = { for k, v in var.deployments : k => v if v.provider == "anthropic" }
 
@@ -117,7 +142,16 @@ resource "azapi_resource" "claude" {
   response_export_values = ["properties.inferenceEndpoint.uri"]
 }
 
-# ─── Private endpoint on the AI Services account (covers both OpenAI + Claude traffic) ───
+data "azapi_resource_action" "claude_keys" {
+  for_each = azapi_resource.claude
+
+  type                   = "Microsoft.MachineLearningServices/workspaces/serverlessEndpoints@2024-10-01"
+  resource_id            = each.value.id
+  action                 = "listKeys"
+  response_export_values = ["primaryKey"]
+}
+
+# ─── Private endpoint on the AI Services account ───
 resource "azurerm_private_endpoint" "this" {
   name                = "pe-ais-${var.name_prefix}"
   resource_group_name = var.resource_group_name
@@ -132,8 +166,8 @@ resource "azurerm_private_endpoint" "this" {
   }
 
   private_dns_zone_group {
-    name                 = "foundry"
-    private_dns_zone_ids = [var.private_dns_zone_id]
+    name                 = "ai"
+    private_dns_zone_ids = var.private_dns_zone_ids
   }
 
   tags = var.tags
@@ -149,6 +183,21 @@ resource "azurerm_monitor_diagnostic_setting" "ais" {
   metric { category = "AllMetrics" }
 }
 
+# ─── KV-backed secrets so callers consume KV refs, never raw keys ───
+resource "azurerm_key_vault_secret" "ai_services_key" {
+  name         = "foundry-ai-services-key"
+  value        = azurerm_ai_services.this.primary_access_key
+  key_vault_id = var.key_vault_id
+}
+
+resource "azurerm_key_vault_secret" "claude_keys" {
+  for_each = azapi_resource.claude
+
+  name         = "foundry-maas-${each.key}-key"
+  value        = jsondecode(data.azapi_resource_action.claude_keys[each.key].output).primaryKey
+  key_vault_id = var.key_vault_id
+}
+
 # ─── Outputs ───
 output "endpoint" {
   value = azurerm_ai_services.this.endpoint
@@ -158,9 +207,8 @@ output "foundry_endpoint" {
   value = "https://${azurerm_ai_services.this.custom_subdomain_name}.services.ai.azure.com"
 }
 
-output "key" {
-  value     = azurerm_ai_services.this.primary_access_key
-  sensitive = true
+output "ai_services_key_secret_ref" {
+  value = azurerm_key_vault_secret.ai_services_key.versionless_id
 }
 
 output "deployments" {
@@ -173,4 +221,8 @@ output "deployments" {
 output "claude_endpoints" {
   value     = { for k, d in azapi_resource.claude : k => jsondecode(d.output).properties.inferenceEndpoint.uri }
   sensitive = true
+}
+
+output "claude_key_secret_refs" {
+  value = { for k, s in azurerm_key_vault_secret.claude_keys : k => s.versionless_id }
 }

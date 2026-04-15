@@ -56,10 +56,11 @@ resource "azurerm_subnet" "pe" {
 
 locals {
   private_dns_zones = {
-    blob     = "privatelink.blob.core.windows.net"
-    kv       = "privatelink.vaultcore.azure.net"
-    openai   = "privatelink.openai.azure.com"
-    postgres = "privatelink.postgres.database.azure.com"
+    blob              = "privatelink.blob.core.windows.net"
+    kv                = "privatelink.vaultcore.azure.net"
+    cognitiveservices = "privatelink.cognitiveservices.azure.com"
+    ai_services       = "privatelink.services.ai.azure.com"
+    postgres          = "privatelink.postgres.database.azure.com"
   }
 }
 
@@ -87,5 +88,14 @@ output "pe_subnet_id" { value = azurerm_subnet.pe.id }
 
 output "blob_private_dns_zone_id" { value = azurerm_private_dns_zone.zones["blob"].id }
 output "kv_private_dns_zone_id" { value = azurerm_private_dns_zone.zones["kv"].id }
-output "openai_private_dns_zone_id" { value = azurerm_private_dns_zone.zones["openai"].id }
+output "cognitiveservices_private_dns_zone_id" { value = azurerm_private_dns_zone.zones["cognitiveservices"].id }
+output "ai_services_private_dns_zone_id" { value = azurerm_private_dns_zone.zones["ai_services"].id }
 output "postgres_private_dns_zone_id" { value = azurerm_private_dns_zone.zones["postgres"].id }
+
+# Convenience list for PEs that need DNS registration in multiple zones (e.g. AI Foundry).
+output "ai_services_private_dns_zone_ids" {
+  value = [
+    azurerm_private_dns_zone.zones["cognitiveservices"].id,
+    azurerm_private_dns_zone.zones["ai_services"].id,
+  ]
+}

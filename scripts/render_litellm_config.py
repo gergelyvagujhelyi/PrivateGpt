@@ -8,13 +8,18 @@ import sys
 import yaml
 
 
+def _env_suffix(name: str) -> str:
+    return name.upper().replace("-", "_")
+
+
 def _params_for(m: dict) -> dict:
     provider = m.get("provider", "openai")
     if provider == "anthropic":
+        suffix = _env_suffix(m["name"])
         return {
             "model": f"azure_ai/{m['name']}",
-            "api_base": "os.environ/AZURE_AI_API_BASE",
-            "api_key": "os.environ/AZURE_AI_API_KEY",
+            "api_base": f"os.environ/ENDPOINT_{suffix}",
+            "api_key": f"os.environ/KEY_{suffix}",
             **({"rpm": m["rpm"]} if m.get("rpm") else {}),
             **({"tpm": m["tpm"]} if m.get("tpm") else {}),
         }

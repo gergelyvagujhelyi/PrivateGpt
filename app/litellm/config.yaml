@@ -1,20 +1,21 @@
 # Rendered by scripts/render_litellm_config.py from app/models.yaml.
-# Secrets are injected as env vars from Key Vault refs by the Container App.
+# Each Anthropic (Claude) MaaS model has its OWN inferenceEndpoint.uri and key,
+# supplied by Terraform as ENDPOINT_<NAME> / KEY_<NAME> env vars.
 
 model_list:
   - model_name: claude-sonnet-4-5
     litellm_params:
       model: azure_ai/claude-sonnet-4-5
-      api_base: os.environ/AZURE_AI_API_BASE
-      api_key: os.environ/AZURE_AI_API_KEY
+      api_base: os.environ/ENDPOINT_CLAUDE_SONNET_4_5
+      api_key: os.environ/KEY_CLAUDE_SONNET_4_5
       rpm: 100
       tpm: 100000
 
   - model_name: claude-haiku-4-5
     litellm_params:
       model: azure_ai/claude-haiku-4-5
-      api_base: os.environ/AZURE_AI_API_BASE
-      api_key: os.environ/AZURE_AI_API_KEY
+      api_base: os.environ/ENDPOINT_CLAUDE_HAIKU_4_5
+      api_key: os.environ/KEY_CLAUDE_HAIKU_4_5
       rpm: 300
       tpm: 300000
 
