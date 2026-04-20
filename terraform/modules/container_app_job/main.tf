@@ -44,16 +44,13 @@ variable "memory" {
   default = "1Gi"
 }
 
+variable "location" { type = string }
 variable "tags" { type = map(string) }
-
-data "azurerm_resource_group" "this" {
-  name = var.resource_group_name
-}
 
 resource "azurerm_user_assigned_identity" "this" {
   name                = "id-${var.name_prefix}-${var.name}"
   resource_group_name = var.resource_group_name
-  location            = data.azurerm_resource_group.this.location
+  location            = var.location
   tags                = var.tags
 }
 
@@ -66,7 +63,7 @@ resource "azurerm_role_assignment" "kv_reader" {
 resource "azurerm_container_app_job" "this" {
   name                         = "caj-${var.name_prefix}-${var.name}"
   resource_group_name          = var.resource_group_name
-  location                     = data.azurerm_resource_group.this.location
+  location                     = var.location
   container_app_environment_id = var.container_app_env_id
 
   replica_timeout_in_seconds = var.replica_timeout_in_seconds

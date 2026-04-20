@@ -1,6 +1,7 @@
 variable "name" { type = string }
 variable "name_prefix" { type = string }
 variable "resource_group_name" { type = string }
+variable "location" { type = string }
 variable "container_app_env_id" { type = string }
 variable "image" { type = string }
 variable "target_port" { type = number }
@@ -46,12 +47,8 @@ variable "tags" { type = map(string) }
 resource "azurerm_user_assigned_identity" "this" {
   name                = "id-${var.name_prefix}-${var.name}"
   resource_group_name = var.resource_group_name
-  location            = data.azurerm_resource_group.this.location
+  location            = var.location
   tags                = var.tags
-}
-
-data "azurerm_resource_group" "this" {
-  name = var.resource_group_name
 }
 
 resource "azurerm_role_assignment" "kv_reader" {

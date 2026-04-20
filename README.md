@@ -228,6 +228,38 @@ cd app/admin  && npm ci && npm run lint && npm run typecheck && npm test
 cd terraform && terraform init -backend=false && terraform test
 ```
 
+## CI runner — VNet-injected agents
+
+Because the stack locks down Key Vault and Storage to private endpoints
+only, the Terraform executor needs a data-plane path inside the VNet.
+The canonical pattern is **Azure DevOps Managed DevOps Pools with VNet
+injection** — MS-managed ephemeral agents dropped into a delegated
+subnet per job.
+
+Scaffolded at `terraform/modules/managed_devops_pool/` and composed in
+a tiny `terraform/stacks/ci_pool/` that reuses the spoke VNet the
+`openwebui` stack already created. Deploy once per client (or once
+platform-wide, depending on your isolation model), then point
+`.azuredevops/pipelines/*.yml` at `pool: <pool_name>` instead of
+`vmImage: ubuntu-latest`.
+
+```bash
+# Fill in ADO org, project, subscription in envs/<client>/ci_pool.tfvars first.
+cd terraform/stacks/ci_pool
+terraform init -backend-config=../../envs/<client>/ci_pool.backend.hcl
+terraform apply -var-file=../../envs/<client>/ci_pool.tfvars
+```
+
+After apply, the pool shows up in Azure DevOps → **Organization
+Settings → Agent pools** as a new pool named `mdp-owui-<client>`.
+Grant the relevant ADO project permission to use it and flip the
+`pool:` line in the pipelines.
+
+**Why this over a static VM agent?**
+- No VM to patch, MS handles the image + updates
+- Scales to zero when idle — cheaper for low-frequency deploys
+- Managed Identity replaces long-lived PATs for Azure auth
+
 ## Branching & CI/CD
 
 - **Trunk-based**, short-lived feature branches, required reviews via CODEOWNERS.

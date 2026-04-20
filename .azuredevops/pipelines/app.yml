@@ -26,7 +26,7 @@ parameters:
 variables:
   - group: owui-${{ parameters.client }}
   - name: acrName
-    value: acroopenwebuishared
+    value: acrowui18819
   - name: sha
     value: $(Build.SourceVersion)
 
