@@ -51,9 +51,10 @@ stages:
             displayName: Install Terraform $(tfVersion)
 
           - script: |
-              curl -sSfL https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash -s -- -b /usr/local/bin
-              pip install --quiet checkov
-            displayName: Install tflint/checkov
+              set -euo pipefail
+              command -v checkov >/dev/null || brew install checkov
+              checkov --version
+            displayName: Install checkov
 
           - script: |
               cd $(stackDir)
