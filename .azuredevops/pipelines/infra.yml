@@ -34,7 +34,7 @@ stages:
     jobs:
       - job: plan
         pool:
-          name: Default
+          vmImage: ubuntu-latest
         strategy:
           matrix:
             dev:  { envName: dev }
@@ -52,7 +52,7 @@ stages:
 
           - script: |
               set -euo pipefail
-              command -v checkov >/dev/null || brew install checkov
+              pipx install checkov
               checkov --version
             displayName: Install checkov
 
@@ -116,7 +116,7 @@ stages:
       - deployment: apply_dev
         environment: owui-${{ parameters.client }}-dev
         pool:
-          name: Default
+          vmImage: ubuntu-latest
         strategy:
           runOnce:
             deploy:
@@ -134,7 +134,7 @@ stages:
       - deployment: apply_test
         environment: owui-${{ parameters.client }}-test
         pool:
-          name: Default
+          vmImage: ubuntu-latest
         strategy:
           runOnce:
             deploy:
@@ -152,7 +152,7 @@ stages:
       - deployment: apply_prod
         environment: owui-${{ parameters.client }}-prod
         pool:
-          name: Default
+          vmImage: ubuntu-latest
         strategy:
           runOnce:
             deploy:
