@@ -35,7 +35,7 @@ stages:
     jobs:
       - job: lint_and_validate_models
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         steps:
           - checkout: self
 
@@ -106,7 +106,7 @@ stages:
     jobs:
       - job: build_images
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         strategy:
           matrix:
             openwebui: { image: openwebui, context: app/openwebui, dockerfile: app/openwebui/Dockerfile }
@@ -148,7 +148,7 @@ stages:
       - deployment: deploy_dev
         environment: owui-${{ parameters.client }}-dev
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         strategy:
           runOnce:
             deploy:
@@ -165,7 +165,7 @@ stages:
     jobs:
       - job: langfuse_eval
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         steps:
           - checkout: self
           - task: UsePythonVersion@0
@@ -189,7 +189,7 @@ stages:
       - deployment: deploy_prod
         environment: owui-${{ parameters.client }}-prod
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         strategy:
           runOnce:
             deploy:

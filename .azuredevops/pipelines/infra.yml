@@ -34,7 +34,7 @@ stages:
     jobs:
       - job: plan
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         strategy:
           matrix:
             dev:  { envName: dev }
@@ -52,7 +52,10 @@ stages:
 
           - script: |
               set -euo pipefail
-              pipx install checkov
+              # Self-hosted macOS agent: brew is available and preferred.
+              # If relocating the pipeline to Microsoft-hosted ubuntu-latest later,
+              # swap this for: pipx install checkov
+              command -v checkov >/dev/null || brew install checkov
               checkov --version
             displayName: Install checkov
 
@@ -116,7 +119,7 @@ stages:
       - deployment: apply_dev
         environment: owui-${{ parameters.client }}-dev
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         strategy:
           runOnce:
             deploy:
@@ -134,7 +137,7 @@ stages:
       - deployment: apply_test
         environment: owui-${{ parameters.client }}-test
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         strategy:
           runOnce:
             deploy:
@@ -152,7 +155,7 @@ stages:
       - deployment: apply_prod
         environment: owui-${{ parameters.client }}-prod
         pool:
-          vmImage: ubuntu-latest
+          name: Default
         strategy:
           runOnce:
             deploy:
