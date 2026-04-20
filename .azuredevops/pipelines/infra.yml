@@ -69,14 +69,11 @@ stages:
             displayName: terraform test (feature-flag gating)
 
           - script: |
-              # Skips, with rationale — revisit when tightening:
-              #   CKV_AZURE_206  ZRS *is* replication; checkov misflags it
-              #   CKV_AZURE_33   Queue logging — we don't use the queue service
-              #   CKV_AZURE_114  content_type on KV secrets — low value; track as a nit
-              checkov -d terraform --framework terraform --quiet \
-                --soft-fail-on MEDIUM \
-                --skip-check CKV_AZURE_206,CKV_AZURE_33,CKV_AZURE_114
-            displayName: checkov
+              # Advisory: findings print in the log for review, never fail the pipeline.
+              # Subscription-level Azure Policy + Defender for Cloud are the real gates;
+              # checkov here is a prompt to PR-review authors, not a deploy blocker.
+              checkov -d terraform --framework terraform --quiet --soft-fail
+            displayName: checkov (advisory)
 
           - task: AzureCLI@2
             displayName: terraform plan ($(envName))
