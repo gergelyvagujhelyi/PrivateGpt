@@ -42,9 +42,12 @@ stages:
         steps:
           - checkout: self
 
-          - task: TerraformInstaller@1
-            inputs:
-              terraformVersion: $(tfVersion)
+          - script: |
+              set -euo pipefail
+              curl -fsSL "https://releases.hashicorp.com/terraform/$(tfVersion)/terraform_$(tfVersion)_linux_amd64.zip" -o tf.zip
+              sudo unzip -o tf.zip -d /usr/local/bin/
+              terraform -version
+            displayName: Install Terraform $(tfVersion)
 
           - script: |
               curl -sSfL https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash -s -- -b /usr/local/bin

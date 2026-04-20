@@ -11,9 +11,12 @@ parameters:
 steps:
   - checkout: self
 
-  - task: TerraformInstaller@1
-    inputs:
-      terraformVersion: ${{ parameters.tfVersion }}
+  - script: |
+      set -euo pipefail
+      curl -fsSL "https://releases.hashicorp.com/terraform/${{ parameters.tfVersion }}/terraform_${{ parameters.tfVersion }}_linux_amd64.zip" -o tf.zip
+      sudo unzip -o tf.zip -d /usr/local/bin/
+      terraform -version
+    displayName: Install Terraform ${{ parameters.tfVersion }}
 
   - download: current
     artifact: tfplan-${{ parameters.envName }}
