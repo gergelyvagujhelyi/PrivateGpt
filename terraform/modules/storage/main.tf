@@ -6,6 +6,8 @@ variable "private_dns_zone_id" { type = string }
 variable "log_analytics_id" { type = string }
 variable "tags" { type = map(string) }
 
+data "azurerm_client_config" "current" {}
+
 resource "random_string" "suffix" {
   length  = 5
   lower   = true
@@ -38,16 +40,39 @@ resource "azurerm_storage_account" "this" {
   tags = var.tags
 }
 
+# Grant the terraform executor data-plane access so the provider can create
+# containers / read blob + queue properties via AAD (shared keys are disabled).
+resource "azurerm_role_assignment" "deployer_blob" {
+  scope                = azurerm_storage_account.this.id
+  role_definition_name = "Storage Blob Data Owner"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+
+resource "azurerm_role_assignment" "deployer_queue" {
+  scope                = azurerm_storage_account.this.id
+  role_definition_name = "Storage Queue Data Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+
+resource "time_sleep" "wait_for_role_propagation" {
+  depends_on      = [azurerm_role_assignment.deployer_blob, azurerm_role_assignment.deployer_queue]
+  create_duration = "60s"
+}
+
 resource "azurerm_storage_container" "uploads" {
   name                  = "openwebui-uploads"
   storage_account_id    = azurerm_storage_account.this.id
   container_access_type = "private"
+
+  depends_on = [time_sleep.wait_for_role_propagation]
 }
 
 resource "azurerm_storage_container" "rag_sources" {
   name                  = "rag-sources"
   storage_account_id    = azurerm_storage_account.this.id
   container_access_type = "private"
+
+  depends_on = [time_sleep.wait_for_role_propagation]
 }
 
 resource "azurerm_private_endpoint" "blob" {

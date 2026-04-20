@@ -42,8 +42,8 @@ run "admin_ui_enabled_provisions_app_and_frontdoor_route" {
   command = plan
 
   variables {
-    admin_image                = "test.azurecr.io/admin:t"
-    entra_admin_app_client_id  = "00000000-0000-0000-0000-000000000000"
+    admin_image               = "test.azurecr.io/admin:t"
+    entra_admin_app_client_id = "00000000-0000-0000-0000-000000000000"
     features = {
       admin_ui = { enabled = true }
     }

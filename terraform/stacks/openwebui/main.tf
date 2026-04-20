@@ -40,13 +40,13 @@ module "observability" {
 module "keyvault" {
   source = "../../modules/keyvault"
 
-  name_prefix            = local.name_prefix
-  resource_group_name    = azurerm_resource_group.this.name
-  location               = var.location
+  name_prefix                = local.name_prefix
+  resource_group_name        = azurerm_resource_group.this.name
+  location                   = var.location
   private_endpoint_subnet_id = module.network.pe_subnet_id
-  private_dns_zone_id    = module.network.kv_private_dns_zone_id
-  log_analytics_id       = module.observability.log_analytics_id
-  tags                   = local.base_tags
+  private_dns_zone_id        = module.network.kv_private_dns_zone_id
+  log_analytics_id           = module.observability.log_analytics_id
+  tags                       = local.base_tags
 }
 
 module "postgres" {
@@ -111,12 +111,12 @@ locals {
 module "container_app_env" {
   source = "../../modules/container_app_env"
 
-  name_prefix         = local.name_prefix
-  resource_group_name = azurerm_resource_group.this.name
-  location            = var.location
+  name_prefix              = local.name_prefix
+  resource_group_name      = azurerm_resource_group.this.name
+  location                 = var.location
   infrastructure_subnet_id = module.network.aca_subnet_id
-  log_analytics_id    = module.observability.log_analytics_id
-  tags                = local.base_tags
+  log_analytics_id         = module.observability.log_analytics_id
+  tags                     = local.base_tags
 }
 
 module "langfuse" {
@@ -146,8 +146,8 @@ module "langfuse" {
     "langfuse-salt"            = module.keyvault.langfuse_salt_ref
   }
 
-  cpu    = 0.5
-  memory = "1Gi"
+  cpu          = 0.5
+  memory       = "1Gi"
   min_replicas = 1
   max_replicas = 3
 
@@ -169,13 +169,13 @@ module "litellm" {
 
   env = concat(
     [
-      { name = "AZURE_API_KEY",       secret_name = "foundry-ai-services-key" },
-      { name = "AZURE_API_BASE",      value       = module.ai_foundry.endpoint },
-      { name = "AZURE_API_VERSION",   value       = "2024-10-21" },
+      { name = "AZURE_API_KEY", secret_name = "foundry-ai-services-key" },
+      { name = "AZURE_API_BASE", value = module.ai_foundry.endpoint },
+      { name = "AZURE_API_VERSION", value = "2024-10-21" },
       { name = "LANGFUSE_PUBLIC_KEY", secret_name = "langfuse-pk" },
       { name = "LANGFUSE_SECRET_KEY", secret_name = "langfuse-sk" },
-      { name = "LANGFUSE_HOST",       value       = "https://${module.langfuse.fqdn}" },
-      { name = "LITELLM_MASTER_KEY",  secret_name = "litellm-master-key" },
+      { name = "LANGFUSE_HOST", value = "https://${module.langfuse.fqdn}" },
+      { name = "LITELLM_MASTER_KEY", secret_name = "litellm-master-key" },
     ],
     local.claude_endpoint_env,
     local.claude_key_secret_env,
@@ -191,8 +191,8 @@ module "litellm" {
     local.claude_key_secret_map,
   )
 
-  cpu    = 0.5
-  memory = "1Gi"
+  cpu          = 0.5
+  memory       = "1Gi"
   min_replicas = 1
   max_replicas = 10
 
@@ -213,31 +213,31 @@ module "openwebui" {
   key_vault_id         = module.keyvault.id
 
   env = [
-    { name = "DATABASE_URL",          secret_name = "openwebui-db-url" },
-    { name = "OPENAI_API_BASE_URL",   value = "https://${module.litellm.fqdn}/v1" },
-    { name = "OPENAI_API_KEY",        secret_name = "litellm-master-key" },
-    { name = "WEBUI_AUTH",            value = "true" },
-    { name = "ENABLE_OAUTH_SIGNUP",   value = "true" },
-    { name = "OAUTH_PROVIDER_NAME",   value = "Microsoft" },
-    { name = "OAUTH_CLIENT_ID",       secret_name = "entra-client-id" },
-    { name = "OAUTH_CLIENT_SECRET",   secret_name = "entra-client-secret" },
-    { name = "OPENID_PROVIDER_URL",   value = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0/.well-known/openid-configuration" },
-    { name = "STORAGE_PROVIDER",      value = "s3" },
-    { name = "S3_ENDPOINT_URL",       value = module.storage.blob_endpoint },
-    { name = "S3_BUCKET_NAME",        value = module.storage.uploads_container_name },
-    { name = "VECTOR_DB",             value = "pgvector" },
-    { name = "PGVECTOR_DB_URL",       secret_name = "openwebui-db-url" },
+    { name = "DATABASE_URL", secret_name = "openwebui-db-url" },
+    { name = "OPENAI_API_BASE_URL", value = "https://${module.litellm.fqdn}/v1" },
+    { name = "OPENAI_API_KEY", secret_name = "litellm-master-key" },
+    { name = "WEBUI_AUTH", value = "true" },
+    { name = "ENABLE_OAUTH_SIGNUP", value = "true" },
+    { name = "OAUTH_PROVIDER_NAME", value = "Microsoft" },
+    { name = "OAUTH_CLIENT_ID", secret_name = "entra-client-id" },
+    { name = "OAUTH_CLIENT_SECRET", secret_name = "entra-client-secret" },
+    { name = "OPENID_PROVIDER_URL", value = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0/.well-known/openid-configuration" },
+    { name = "STORAGE_PROVIDER", value = "s3" },
+    { name = "S3_ENDPOINT_URL", value = module.storage.blob_endpoint },
+    { name = "S3_BUCKET_NAME", value = module.storage.uploads_container_name },
+    { name = "VECTOR_DB", value = "pgvector" },
+    { name = "PGVECTOR_DB_URL", secret_name = "openwebui-db-url" },
   ]
 
   secrets = {
-    "openwebui-db-url"     = module.postgres.openwebui_connection_string
-    "litellm-master-key"   = module.keyvault.litellm_master_key_ref
-    "entra-client-id"      = module.keyvault.entra_client_id_ref
-    "entra-client-secret"  = module.keyvault.entra_client_secret_ref
+    "openwebui-db-url"    = module.postgres.openwebui_connection_string
+    "litellm-master-key"  = module.keyvault.litellm_master_key_ref
+    "entra-client-id"     = module.keyvault.entra_client_id_ref
+    "entra-client-secret" = module.keyvault.entra_client_secret_ref
   }
 
-  cpu    = 1.0
-  memory = "2Gi"
+  cpu          = 1.0
+  memory       = "2Gi"
   min_replicas = var.environment == "prod" ? 2 : 1
   max_replicas = var.environment == "prod" ? 10 : 3
 
@@ -285,25 +285,25 @@ module "communication_services" {
 
 locals {
   digest_env_common = local.digest_enabled ? [
-    { name = "DATABASE_URL",          secret_name = "openwebui-db-url" },
-    { name = "OPENAI_BASE_URL",       value = "https://${module.litellm.fqdn}/v1" },
-    { name = "OPENAI_API_KEY",        secret_name = "litellm-master-key" },
-    { name = "LANGFUSE_HOST",         value = "https://${module.langfuse.fqdn}" },
-    { name = "LANGFUSE_PUBLIC_KEY",   secret_name = "langfuse-pk" },
-    { name = "LANGFUSE_SECRET_KEY",   secret_name = "langfuse-sk" },
+    { name = "DATABASE_URL", secret_name = "openwebui-db-url" },
+    { name = "OPENAI_BASE_URL", value = "https://${module.litellm.fqdn}/v1" },
+    { name = "OPENAI_API_KEY", secret_name = "litellm-master-key" },
+    { name = "LANGFUSE_HOST", value = "https://${module.langfuse.fqdn}" },
+    { name = "LANGFUSE_PUBLIC_KEY", secret_name = "langfuse-pk" },
+    { name = "LANGFUSE_SECRET_KEY", secret_name = "langfuse-sk" },
     { name = "ACS_CONNECTION_STRING", secret_name = "acs-connection-string" },
-    { name = "ACS_SENDER",            value = module.communication_services[0].sender_address },
-    { name = "UNSUB_HMAC_KEY",        secret_name = "unsub-hmac-key" },
-    { name = "PUBLIC_BASE_URL",       value = module.frontdoor.endpoint },
+    { name = "ACS_SENDER", value = module.communication_services[0].sender_address },
+    { name = "UNSUB_HMAC_KEY", secret_name = "unsub-hmac-key" },
+    { name = "PUBLIC_BASE_URL", value = module.frontdoor.endpoint },
   ] : []
 
   digest_secrets_common = local.digest_enabled ? {
-    "openwebui-db-url"       = module.postgres.openwebui_connection_string
-    "litellm-master-key"     = module.keyvault.litellm_master_key_ref
-    "langfuse-pk"            = module.keyvault.langfuse_pk_ref
-    "langfuse-sk"            = module.keyvault.langfuse_sk_ref
-    "acs-connection-string"  = module.communication_services[0].connection_string_secret_ref
-    "unsub-hmac-key"         = module.communication_services[0].unsub_hmac_secret_ref
+    "openwebui-db-url"      = module.postgres.openwebui_connection_string
+    "litellm-master-key"    = module.keyvault.litellm_master_key_ref
+    "langfuse-pk"           = module.keyvault.langfuse_pk_ref
+    "langfuse-sk"           = module.keyvault.langfuse_sk_ref
+    "acs-connection-string" = module.communication_services[0].connection_string_secret_ref
+    "unsub-hmac-key"        = module.communication_services[0].unsub_hmac_secret_ref
   } : {}
 }
 
@@ -365,12 +365,12 @@ module "rag_ingest" {
   cron_expression      = try(var.features.rag.ingest_cron, "*/15 * * * *")
 
   env = [
-    { name = "DATABASE_URL",     secret_name = "openwebui-db-url" },
-    { name = "BLOB_ACCOUNT_URL", value       = "https://${module.storage.name}.blob.core.windows.net" },
-    { name = "BLOB_CONTAINER",   value       = module.storage.rag_sources_container_name },
-    { name = "NAMESPACE_PREFIX", value       = try(var.features.rag.namespace_prefix, "") },
-    { name = "OPENAI_BASE_URL",  value       = "https://${module.litellm.fqdn}/v1" },
-    { name = "OPENAI_API_KEY",   secret_name = "litellm-master-key" },
+    { name = "DATABASE_URL", secret_name = "openwebui-db-url" },
+    { name = "BLOB_ACCOUNT_URL", value = "https://${module.storage.name}.blob.core.windows.net" },
+    { name = "BLOB_CONTAINER", value = module.storage.rag_sources_container_name },
+    { name = "NAMESPACE_PREFIX", value = try(var.features.rag.namespace_prefix, "") },
+    { name = "OPENAI_BASE_URL", value = "https://${module.litellm.fqdn}/v1" },
+    { name = "OPENAI_API_KEY", secret_name = "litellm-master-key" },
   ]
 
   secrets = {
@@ -412,12 +412,12 @@ module "admin" {
   key_vault_id         = module.keyvault.id
 
   env = [
-    { name = "DATABASE_URL",         secret_name = "openwebui-db-url" },
-    { name = "LANGFUSE_HOST",        value       = "https://${module.langfuse.fqdn}" },
-    { name = "LANGFUSE_PUBLIC_KEY",  secret_name = "langfuse-pk" },
-    { name = "LANGFUSE_SECRET_KEY",  secret_name = "langfuse-sk" },
-    { name = "ENTRA_TENANT_ID",      value       = data.azurerm_client_config.current.tenant_id },
-    { name = "ADMIN_API_AUDIENCE",   value       = var.entra_admin_app_client_id },
+    { name = "DATABASE_URL", secret_name = "openwebui-db-url" },
+    { name = "LANGFUSE_HOST", value = "https://${module.langfuse.fqdn}" },
+    { name = "LANGFUSE_PUBLIC_KEY", secret_name = "langfuse-pk" },
+    { name = "LANGFUSE_SECRET_KEY", secret_name = "langfuse-sk" },
+    { name = "ENTRA_TENANT_ID", value = data.azurerm_client_config.current.tenant_id },
+    { name = "ADMIN_API_AUDIENCE", value = var.entra_admin_app_client_id },
   ]
 
   secrets = {
@@ -426,8 +426,8 @@ module "admin" {
     "langfuse-sk"      = module.keyvault.langfuse_sk_ref
   }
 
-  cpu    = 0.5
-  memory = "1Gi"
+  cpu          = 0.5
+  memory       = "1Gi"
   min_replicas = 1
   max_replicas = 3
 

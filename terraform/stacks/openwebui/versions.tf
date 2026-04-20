@@ -18,12 +18,21 @@ terraform {
       source  = "azure/azapi"
       version = "~> 2.0"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.12"
+    }
   }
 
   backend "azurerm" {}
 }
 
 provider "azurerm" {
+  # Storage accounts disable shared-key auth for security. Force the provider
+  # to use AAD for data-plane calls (retrieving blob/queue/table properties)
+  # so the authenticated SP's token is used instead of a storage key.
+  storage_use_azuread = true
+
   features {
     key_vault {
       purge_soft_delete_on_destroy    = false
