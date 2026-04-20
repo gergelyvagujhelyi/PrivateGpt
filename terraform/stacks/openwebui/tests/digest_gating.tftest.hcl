@@ -1,7 +1,15 @@
 // Plan-only tests for the feature-flag gating on the digest feature.
 // Runs in the infra pipeline's Validate stage. No real Azure calls.
 
-mock_provider "azurerm" {}
+mock_provider "azurerm" {
+  mock_data "azurerm_client_config" {
+    defaults = {
+      tenant_id       = "00000000-0000-0000-0000-000000000000"
+      subscription_id = "00000000-0000-0000-0000-000000000000"
+      object_id       = "00000000-0000-0000-0000-000000000000"
+    }
+  }
+}
 mock_provider "azuread" {}
 mock_provider "azapi" {}
 mock_provider "random" {}
@@ -19,9 +27,6 @@ variables {
 
 run "digest_disabled_by_default" {
   command = plan
-  module {
-    source = "../stacks/openwebui"
-  }
 
   assert {
     condition     = length(module.digest_daily) == 0
@@ -39,9 +44,6 @@ run "digest_disabled_by_default" {
 
 run "digest_enabled_provisions_jobs_and_acs" {
   command = plan
-  module {
-    source = "../stacks/openwebui"
-  }
 
   variables {
     digest_image = "test.azurecr.io/digest:t"

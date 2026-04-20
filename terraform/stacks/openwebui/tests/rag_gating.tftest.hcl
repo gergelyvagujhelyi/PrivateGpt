@@ -1,7 +1,15 @@
 // Plan-only tests for the feature-flag gating on the RAG feature.
 // Mirrors digest_gating.tftest.hcl — same shape, different flag.
 
-mock_provider "azurerm" {}
+mock_provider "azurerm" {
+  mock_data "azurerm_client_config" {
+    defaults = {
+      tenant_id       = "00000000-0000-0000-0000-000000000000"
+      subscription_id = "00000000-0000-0000-0000-000000000000"
+      object_id       = "00000000-0000-0000-0000-000000000000"
+    }
+  }
+}
 mock_provider "azuread" {}
 mock_provider "azapi" {}
 mock_provider "random" {}
@@ -19,9 +27,6 @@ variables {
 
 run "rag_disabled_by_default" {
   command = plan
-  module {
-    source = "../stacks/openwebui"
-  }
 
   assert {
     condition     = length(module.rag_ingest) == 0
@@ -35,9 +40,6 @@ run "rag_disabled_by_default" {
 
 run "rag_enabled_provisions_job_and_role" {
   command = plan
-  module {
-    source = "../stacks/openwebui"
-  }
 
   variables {
     rag_image = "test.azurecr.io/rag:t"

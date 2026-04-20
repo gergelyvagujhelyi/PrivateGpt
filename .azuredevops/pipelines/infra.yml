@@ -64,8 +64,7 @@ stages:
             displayName: fmt + validate
 
           - script: |
-              cd terraform
-              terraform init -backend=false
+              cd $(stackDir)
               terraform test -verbose
             displayName: terraform test (feature-flag gating)
 
