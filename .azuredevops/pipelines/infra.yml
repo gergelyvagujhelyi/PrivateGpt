@@ -33,7 +33,8 @@ stages:
     displayName: Plan + scan
     jobs:
       - job: plan
-        pool: { vmImage: ubuntu-latest }
+        pool:
+          name: Default
         strategy:
           matrix:
             dev:  { envName: dev }
@@ -103,7 +104,8 @@ stages:
     jobs:
       - deployment: apply_dev
         environment: owui-${{ parameters.client }}-dev
-        pool: { vmImage: ubuntu-latest }
+        pool:
+          name: Default
         strategy:
           runOnce:
             deploy:
@@ -120,7 +122,8 @@ stages:
     jobs:
       - deployment: apply_test
         environment: owui-${{ parameters.client }}-test
-        pool: { vmImage: ubuntu-latest }
+        pool:
+          name: Default
         strategy:
           runOnce:
             deploy:
@@ -137,7 +140,8 @@ stages:
     jobs:
       - deployment: apply_prod
         environment: owui-${{ parameters.client }}-prod
-        pool: { vmImage: ubuntu-latest }
+        pool:
+          name: Default
         strategy:
           runOnce:
             deploy:
