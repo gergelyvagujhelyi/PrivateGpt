@@ -147,9 +147,9 @@ output "uri" { value = azurerm_key_vault.this.vault_uri }
 # Container App secret refs are of the form  keyvaultref:https://<vault>/secrets/<name>,identityref:<mi-id>
 # We emit just the KV URIs; the container_app module wires the identity.
 output "langfuse_nextauth_secret_ref" { value = azurerm_key_vault_secret.langfuse_nextauth_secret.versionless_id }
-output "langfuse_salt_ref"            { value = azurerm_key_vault_secret.langfuse_salt.versionless_id }
-output "langfuse_pk_ref"              { value = azurerm_key_vault_secret.langfuse_pk.versionless_id }
-output "langfuse_sk_ref"              { value = azurerm_key_vault_secret.langfuse_sk.versionless_id }
-output "litellm_master_key_ref"       { value = azurerm_key_vault_secret.litellm_master_key.versionless_id }
-output "entra_client_id_ref"          { value = azurerm_key_vault_secret.entra_client_id.versionless_id }
-output "entra_client_secret_ref"      { value = azurerm_key_vault_secret.entra_client_secret.versionless_id }
+output "langfuse_salt_ref" { value = azurerm_key_vault_secret.langfuse_salt.versionless_id }
+output "langfuse_pk_ref" { value = azurerm_key_vault_secret.langfuse_pk.versionless_id }
+output "langfuse_sk_ref" { value = azurerm_key_vault_secret.langfuse_sk.versionless_id }
+output "litellm_master_key_ref" { value = azurerm_key_vault_secret.litellm_master_key.versionless_id }
+output "entra_client_id_ref" { value = azurerm_key_vault_secret.entra_client_id.versionless_id }
+output "entra_client_secret_ref" { value = azurerm_key_vault_secret.entra_client_secret.versionless_id }

@@ -23,8 +23,8 @@ resource "azurerm_email_communication_service" "this" {
 # Azure-managed subdomain on *.azurecomm.net — zero DNS setup.
 # Swap to a CustomerManagedDomain once the client completes DNS verification.
 resource "azurerm_email_communication_service_domain" "this" {
-  name             = "AzureManagedDomain"
-  email_service_id = azurerm_email_communication_service.this.id
+  name              = "AzureManagedDomain"
+  email_service_id  = azurerm_email_communication_service.this.id
   domain_management = "AzureManaged"
   tags              = var.tags
 }
@@ -45,8 +45,8 @@ resource "azapi_resource" "domain_link" {
   body = {
     location = "global"
     properties = {
-      dataLocation   = var.data_location
-      linkedDomains  = [azurerm_email_communication_service_domain.this.id]
+      dataLocation  = var.data_location
+      linkedDomains = [azurerm_email_communication_service_domain.this.id]
     }
   }
 

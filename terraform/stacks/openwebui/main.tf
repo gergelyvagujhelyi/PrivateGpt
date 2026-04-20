@@ -126,6 +126,7 @@ module "langfuse" {
   name_prefix          = local.name_prefix
   resource_group_name  = azurerm_resource_group.this.name
   container_app_env_id = module.container_app_env.id
+  location             = var.location
   image                = var.langfuse_image
   target_port          = 3000
   ingress_external     = false
@@ -160,6 +161,7 @@ module "litellm" {
   name_prefix          = local.name_prefix
   resource_group_name  = azurerm_resource_group.this.name
   container_app_env_id = module.container_app_env.id
+  location             = var.location
   image                = var.litellm_image
   target_port          = 4000
   ingress_external     = false
@@ -204,6 +206,7 @@ module "openwebui" {
   name_prefix          = local.name_prefix
   resource_group_name  = azurerm_resource_group.this.name
   container_app_env_id = module.container_app_env.id
+  location             = var.location
   image                = var.openwebui_image
   target_port          = 8080
   ingress_external     = false
@@ -312,6 +315,7 @@ module "digest_daily" {
   name_prefix          = local.name_prefix
   resource_group_name  = azurerm_resource_group.this.name
   container_app_env_id = module.container_app_env.id
+  location             = var.location
   key_vault_id         = module.keyvault.id
   image                = var.digest_image
   cron_expression      = try(var.features.digest.daily_cron, "0 7 * * *")
@@ -330,6 +334,7 @@ module "digest_weekly" {
   name_prefix          = local.name_prefix
   resource_group_name  = azurerm_resource_group.this.name
   container_app_env_id = module.container_app_env.id
+  location             = var.location
   key_vault_id         = module.keyvault.id
   image                = var.digest_image
   cron_expression      = try(var.features.digest.weekly_cron, "0 7 * * MON")
@@ -354,6 +359,7 @@ module "rag_ingest" {
   name_prefix          = local.name_prefix
   resource_group_name  = azurerm_resource_group.this.name
   container_app_env_id = module.container_app_env.id
+  location             = var.location
   key_vault_id         = module.keyvault.id
   image                = var.rag_image
   cron_expression      = try(var.features.rag.ingest_cron, "*/15 * * * *")
@@ -399,6 +405,7 @@ module "admin" {
   name_prefix          = local.name_prefix
   resource_group_name  = azurerm_resource_group.this.name
   container_app_env_id = module.container_app_env.id
+  location             = var.location
   image                = var.admin_image
   target_port          = 4000
   ingress_external     = false
