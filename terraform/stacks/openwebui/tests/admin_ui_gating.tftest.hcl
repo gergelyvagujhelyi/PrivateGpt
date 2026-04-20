@@ -1,7 +1,15 @@
 // Plan-only tests for the feature-flag gating on the admin UI feature.
 // Covers: admin Container App creation + Front Door secondary endpoint.
 
-mock_provider "azurerm" {}
+mock_provider "azurerm" {
+  mock_data "azurerm_client_config" {
+    defaults = {
+      tenant_id       = "00000000-0000-0000-0000-000000000000"
+      subscription_id = "00000000-0000-0000-0000-000000000000"
+      object_id       = "00000000-0000-0000-0000-000000000000"
+    }
+  }
+}
 mock_provider "azuread" {}
 mock_provider "azapi" {}
 mock_provider "random" {}
@@ -19,9 +27,6 @@ variables {
 
 run "admin_ui_disabled_by_default" {
   command = plan
-  module {
-    source = "../stacks/openwebui"
-  }
 
   assert {
     condition     = length(module.admin) == 0
@@ -35,9 +40,6 @@ run "admin_ui_disabled_by_default" {
 
 run "admin_ui_enabled_provisions_app_and_frontdoor_route" {
   command = plan
-  module {
-    source = "../stacks/openwebui"
-  }
 
   variables {
     admin_image                = "test.azurecr.io/admin:t"
