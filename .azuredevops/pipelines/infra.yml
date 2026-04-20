@@ -81,9 +81,17 @@ stages:
               azureSubscription: sc-owui-${{ parameters.client }}
               scriptType: bash
               scriptLocation: inlineScript
+              addSpnToEnvironment: true
               inlineScript: |
                 set -euo pipefail
+                # Map ADO WIF creds → ARM_* so terraform's azurerm backend can use OIDC.
+                export ARM_USE_OIDC=true
                 export ARM_USE_AZUREAD=true
+                export ARM_OIDC_TOKEN="$idToken"
+                export ARM_CLIENT_ID="$servicePrincipalId"
+                export ARM_TENANT_ID="$tenantId"
+                export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+
                 export ENVIRONMENT=$(envName)
                 cd $(stackDir)
                 envsubst < ../../envs/${{ parameters.client }}/backend.hcl > backend.generated.hcl
