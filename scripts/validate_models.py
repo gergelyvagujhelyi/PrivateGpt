@@ -59,6 +59,22 @@ _DEPLOYMENT_LINE = re.compile(
 _KV = re.compile(r'(\w+)\s*=\s*(?:"([^"]*)"|(\d+))')
 
 
+_SCALAR_ASSIGN = re.compile(
+    r'^\s*(?P<key>\w+)\s*=\s*"(?P<value>[^"]*)"\s*$',
+    re.MULTILINE,
+)
+
+
+def read_tfvars_scalar(tfvars_path: str, key: str) -> str | None:
+    """Read a top-level scalar string assignment from a tfvars file.
+    Returns None if not set."""
+    text = open(tfvars_path).read()
+    for m in _SCALAR_ASSIGN.finditer(text):
+        if m.group("key") == key:
+            return m.group("value")
+    return None
+
+
 def load_foundry_deployments(tfvars_path: str) -> list[Model]:
     """Read foundry_deployments = { ... } from a .tfvars and return per-line
     Model entries for quota validation. Anthropic entries are kept so callers
@@ -173,9 +189,18 @@ def main() -> int:
 
     if not args.skip_quota:
         sub = os.environ.get("AZURE_SUBSCRIPTION_ID")
-        loc = os.environ.get("AZURE_LOCATION", "westeurope")
+        # Prefer foundry_location from tfvars over AZURE_LOCATION env var: the
+        # script is self-contained rather than relying on the caller to extract
+        # the right region (the previous awk-in-pipeline approach was fragile).
+        loc: str = (
+            (read_tfvars_scalar(args.tfvars, "foundry_location") if args.tfvars else None)
+            or (read_tfvars_scalar(args.tfvars, "location") if args.tfvars else None)
+            or os.environ.get("AZURE_LOCATION")
+            or "westeurope"
+        )
         if sub:
             quota_targets = load_foundry_deployments(args.tfvars) if args.tfvars else models
+            print(f"quota check: location={loc}, targets={len(quota_targets)}", file=sys.stderr)
             errs += validate_openai_quota(quota_targets, sub, loc)
         else:
             print("AZURE_SUBSCRIPTION_ID not set; skipping openai quota check", file=sys.stderr)
