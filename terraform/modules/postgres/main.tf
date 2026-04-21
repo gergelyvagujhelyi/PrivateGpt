@@ -33,8 +33,8 @@ resource "azurerm_postgresql_flexible_server" "this" {
   delegated_subnet_id = var.delegated_subnet_id
   private_dns_zone_id = var.private_dns_zone_id
 
-  backup_retention_days        = 14
-  geo_redundant_backup_enabled = false
+  backup_retention_days         = 14
+  geo_redundant_backup_enabled  = false
   public_network_access_enabled = false
 
   tags = var.tags
