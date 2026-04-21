@@ -4,30 +4,30 @@ location         = "westeurope"
 foundry_location = "swedencentral"
 cost_center      = "CC-KOMPOSE-DEMO"
 
-openwebui_image = "acroopenwebuishared.azurecr.io/openwebui:dev"
-litellm_image   = "acroopenwebuishared.azurecr.io/litellm:dev"
+openwebui_image = "ghcr.io/open-webui/open-webui:main"
+litellm_image   = "ghcr.io/berriai/litellm:main-stable"
 langfuse_image  = "langfuse/langfuse:2"
-digest_image    = "acroopenwebuishared.azurecr.io/digest:dev"
-rag_image       = "acroopenwebuishared.azurecr.io/rag:dev"
-admin_image     = "acroopenwebuishared.azurecr.io/admin:dev"
+digest_image    = "mcr.microsoft.com/azuredocs/aci-helloworld:latest"
+rag_image       = "mcr.microsoft.com/azuredocs/aci-helloworld:latest"
+admin_image     = "mcr.microsoft.com/azuredocs/aci-helloworld:latest"
 
 entra_admin_app_client_id = "00000000-0000-0000-0000-000000000000"
 
 features = {
   digest = {
-    enabled        = true
+    enabled        = false
     daily_cron     = "0 6 * * *"
     weekly_cron    = "0 6 * * MON"
     sender_local   = "assistant"
     default_opt_in = false
   }
   rag = {
-    enabled          = true
+    enabled          = false
     ingest_cron      = "*/15 * * * *"
     namespace_prefix = ""
   }
   admin_ui = {
-    enabled = true
+    enabled = false
   }
 }
 
