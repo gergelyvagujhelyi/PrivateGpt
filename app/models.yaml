@@ -25,6 +25,7 @@ models:
     capacity: 50
     purpose: chat
     exposed_as: gpt-4o
+    content_safety_policy: Microsoft.DefaultV2
 
   - name: gpt-4o-mini
     provider: openai
@@ -33,6 +34,7 @@ models:
     capacity: 50
     purpose: chat
     exposed_as: gpt-4o-mini
+    content_safety_policy: Microsoft.DefaultV2
 
   - name: text-embedding-3-large
     provider: openai

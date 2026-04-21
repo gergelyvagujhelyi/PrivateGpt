@@ -34,7 +34,13 @@ def pg_url():
 
 
 def _vec(bias: float) -> list[float]:
-    return [bias] + [0.0] * (EMBEDDING_DIM - 1)
+    # Spread the signal across two dims so different biases produce vectors
+    # pointing in different directions. Pure-scalar variants along one dim
+    # are colinear and indistinguishable under cosine similarity.
+    v = [0.0] * EMBEDDING_DIM
+    v[0] = bias
+    v[1] = 1.0 - bias
+    return v
 
 
 def test_ingest_and_search_roundtrip(pg_url: str):

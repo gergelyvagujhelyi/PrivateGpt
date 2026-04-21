@@ -8,6 +8,13 @@ from pgvector.psycopg import register_vector
 
 def connect(database_url: str) -> psycopg.Connection:
     conn = psycopg.connect(database_url)
+    # register_vector requires the `vector` type to exist. Migrations create
+    # the extension, but the store's connect() may be called against a fresh
+    # DB before migrations ran (first-time tests, integration bootstraps).
+    # Ensure the extension is present before the type registration.
+    with conn.cursor() as cur:
+        cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    conn.commit()
     register_vector(conn)
     return conn
 
@@ -43,7 +50,9 @@ def upsert_source(
             """,
             (namespace, uri, etag, content_type, byte_size),
         )
-        return cur.fetchone()[0]
+        row = cur.fetchone()
+        assert row is not None, "INSERT ... RETURNING id must produce one row"
+        return row[0]
 
 
 def write_chunks(
@@ -58,7 +67,7 @@ def write_chunks(
     ) as copy:
         import json
 
-        copy.set_types(["uuid", "text", "int4", "text", "vector", "jsonb"])
+        copy.set_types(["uuid", "text", "int4", "text", "halfvec", "jsonb"])
         n = 0
         for idx, text, vec, meta in rows:
             copy.write_row((source_id, namespace, idx, text, vec, json.dumps(meta)))
@@ -78,11 +87,11 @@ def similarity_search(
             SELECT c.content,
                    c.metadata,
                    s.source_uri,
-                   1 - (c.embedding <=> %s::vector) AS score
+                   1 - (c.embedding <=> %s::halfvec) AS score
               FROM rag_chunks c
               JOIN rag_sources s ON s.id = c.source_id
              WHERE c.namespace = %s
-          ORDER BY c.embedding <=> %s::vector
+          ORDER BY c.embedding <=> %s::halfvec
              LIMIT %s
             """,
             (query_vec, namespace, query_vec, top_k),
