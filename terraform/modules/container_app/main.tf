@@ -58,7 +58,8 @@ resource "azurerm_role_assignment" "kv_reader" {
 }
 
 resource "azurerm_container_app" "this" {
-  name                         = "ca-${var.name_prefix}-${var.name}"
+  # Azure Container App names max at 32 chars.
+  name                         = substr("ca-${var.name_prefix}-${var.name}", 0, 32)
   resource_group_name          = var.resource_group_name
   container_app_environment_id = var.container_app_env_id
   revision_mode                = "Single"

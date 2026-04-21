@@ -61,7 +61,8 @@ resource "azurerm_role_assignment" "kv_reader" {
 }
 
 resource "azurerm_container_app_job" "this" {
-  name                         = "caj-${var.name_prefix}-${var.name}"
+  # Azure Container App Job names max at 32 chars.
+  name                         = substr("caj-${var.name_prefix}-${var.name}", 0, 32)
   resource_group_name          = var.resource_group_name
   location                     = var.location
   container_app_environment_id = var.container_app_env_id
