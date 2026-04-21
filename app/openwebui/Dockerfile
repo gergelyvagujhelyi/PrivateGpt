@@ -18,7 +18,15 @@ RUN apt-get update \
         'black>=26.3.1' \
         'jaraco.context>=6.1.0' \
         'wheel>=0.46.2' \
-  && rm -rf /root/.cache/pip
+  && rm -rf /root/.cache/pip \
+  # setuptools vendors a copy of jaraco.context + wheel inside its own
+  # package. pip --upgrade only touches top-level site-packages, so the
+  # vendored dist-info files at older versions stay and trivy keeps
+  # flagging them. Remove the stale METADATA directories directly.
+  && find /usr/local/lib/python*/site-packages/setuptools/_vendor \
+       -maxdepth 1 -type d \
+       \( -name 'jaraco.context-5.3.0.dist-info' -o -name 'wheel-0.45.1.dist-info' \) \
+       -exec rm -rf {} + 2>/dev/null || true
 
 # Runtime is Python + the pre-built SvelteKit static bundle; npm itself
 # isn't needed. Its bundled node_modules tree is where the picomatch

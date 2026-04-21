@@ -8,8 +8,20 @@ FROM ghcr.io/berriai/litellm:${LITELLM_VERSION}
 # Revisit every upstream bump — when upstream catches up, this shrinks.
 USER root
 RUN apk --no-cache upgrade \
-  && pip install --no-cache-dir --upgrade 'Brotli>=1.2.0' \
-  && rm -rf /root/.cache/pip
+  && pip install --no-cache-dir --upgrade \
+        'Brotli>=1.2.0' \
+        'orjson>=3.11.6' \
+  && rm -rf /root/.cache/pip \
+  # picomatch 4.0.3 (CVE-2026-33671) ships inside bundled npm trees in
+  # two places:
+  #   /usr/local/lib/node_modules/npm                       — system npm
+  #   /usr/lib/python*/site-packages/nodejs_wheel/.../npm   — pip's
+  #     nodejs_wheel package; litellm proxy doesn't invoke npm at
+  #     runtime, so removing both is safe.
+  && rm -rf /usr/local/lib/node_modules/npm \
+            /usr/local/bin/npm /usr/local/bin/npx \
+            /usr/lib/python*/site-packages/nodejs_wheel/lib/node_modules/npm \
+            2>/dev/null || true
 
 COPY config.yaml /app/config.yaml
 
