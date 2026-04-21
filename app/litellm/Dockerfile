@@ -11,6 +11,8 @@ RUN apk --no-cache upgrade \
   && pip install --no-cache-dir --upgrade \
         'Brotli>=1.2.0' \
         'orjson>=3.11.6' \
+        'pillow>=12.2.0' \
+        'python-multipart>=0.0.22' \
   && rm -rf /root/.cache/pip \
   # picomatch 4.0.3 (CVE-2026-33671) ships inside bundled npm trees in
   # two places:
