@@ -27,18 +27,13 @@ from .unsub import sign_token
 
 log = structlog.get_logger()
 
-CADENCE = os.environ["CADENCE"]            # "daily" | "weekly"
-WINDOW = timedelta(days=1 if CADENCE == "daily" else 7)
-DATABASE_URL = os.environ["DATABASE_URL"]
-PUBLIC_BASE_URL = os.environ["PUBLIC_BASE_URL"]   # e.g. https://assistant.acme.example
-
 tmpl_env = Environment(
     loader=FileSystemLoader("templates"),
     autoescape=select_autoescape(["html", "xml"]),
 )
 
 
-def users_to_notify(conn: psycopg.Connection) -> list[dict]:
+def users_to_notify(conn: psycopg.Connection, cadence: str, window: timedelta) -> list[dict]:
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(
             """
@@ -49,7 +44,7 @@ def users_to_notify(conn: psycopg.Connection) -> list[dict]:
               AND p.unsubscribed_at IS NULL
               AND (p.last_sent_at IS NULL OR p.last_sent_at < NOW() - %s::interval)
             """,
-            (CADENCE, f"{WINDOW.days} days"),
+            (cadence, f"{window.days} days"),
         )
         return cur.fetchall()
 
@@ -63,18 +58,23 @@ def mark_sent(conn: psycopg.Connection, user_id: str) -> None:
 
 
 def run() -> int:
-    since = datetime.now(UTC) - WINDOW
+    cadence = os.environ["CADENCE"]            # "daily" | "weekly"
+    window = timedelta(days=1 if cadence == "daily" else 7)
+    database_url = os.environ["DATABASE_URL"]
+    public_base_url = os.environ["PUBLIC_BASE_URL"]   # e.g. https://assistant.acme.example
+
+    since = datetime.now(UTC) - window
     sender = EmailSender()
     template = tmpl_env.get_template("digest.html.j2")
 
     sent = skipped = errored = 0
 
-    with psycopg.connect(DATABASE_URL, autocommit=False) as conn:
+    with psycopg.connect(database_url, autocommit=False) as conn:
         ensure_schema(conn)
         conn.commit()
 
-        for user in users_to_notify(conn):
-            bound = log.bind(user_id=str(user["id"]), cadence=CADENCE)
+        for user in users_to_notify(conn, cadence, window):
+            bound = log.bind(user_id=str(user["id"]), cadence=cadence)
             try:
                 activity = fetch_user_activity(user_id=str(user["id"]), since=since)
                 if not activity.traces:
@@ -85,11 +85,11 @@ def run() -> int:
                     continue
 
                 summary = summarise(user_id=str(user["id"]), since=since)
-                unsub_url = f"{PUBLIC_BASE_URL}/unsubscribe?t={sign_token(str(user['id']))}"
+                unsub_url = f"{public_base_url}/unsubscribe?t={sign_token(str(user['id']))}"
 
                 html = template.render(
                     name=user["name"],
-                    window=CADENCE,
+                    window=cadence,
                     unsub_url=unsub_url,
                     summary=summary,
                     stats=activity.stats,
@@ -97,7 +97,7 @@ def run() -> int:
                 sender.send(
                     to=user["email"],
                     display_name=user["name"],
-                    subject=f"Your {CADENCE} AI assistant summary",
+                    subject=f"Your {cadence} AI assistant summary",
                     html=html,
                     plain=summary,
                 )

@@ -35,7 +35,6 @@ def pg_url():
 @pytest.fixture
 def seeded_db(pg_url: str, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DATABASE_URL", pg_url)
-    monkeypatch.setattr(main, "DATABASE_URL", pg_url)
 
     with psycopg.connect(pg_url) as conn:
         with conn.cursor() as cur:
