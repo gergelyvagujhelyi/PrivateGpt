@@ -115,14 +115,6 @@ stages:
                 python scripts/validate_models.py app/models.yaml \
                   --tfvars "terraform/envs/${{ parameters.client }}/dev.tfvars"
 
-          - script: |
-              python scripts/render_litellm_config.py app/models.yaml --out app/litellm/config.yaml
-              git diff --exit-code app/litellm/config.yaml || {
-                echo "::error::config.yaml is out of sync with models.yaml — regenerate and commit"
-                exit 1
-              }
-            displayName: Check LiteLLM config is in sync
-
   - stage: Build
     dependsOn: Validate
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))

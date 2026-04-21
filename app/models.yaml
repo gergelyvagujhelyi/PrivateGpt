@@ -1,7 +1,9 @@
 # Declarative model catalogue — single source of truth.
 # Changes drive:
 #   1. Azure AI Foundry deployments (terraform var foundry_deployments)
-#   2. LiteLLM router config (rendered by scripts/render_litellm_config.py)
+#   2. LiteLLM router config (rendered per-client at deploy time by
+#      terraform/stacks/openwebui — intersection of this catalogue with
+#      the client's foundry_deployments)
 
 models:
   - name: claude-sonnet-4-5

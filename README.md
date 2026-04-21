@@ -46,7 +46,6 @@ app/
 scripts/
   onboard_client.sh     scaffold tfvars for a new client
   validate_models.py    schema + live Foundry/AOAI quota check
-  render_litellm_config.py
 
 tests/eval/          Langfuse-backed golden-prompt eval suite (gates prod)
 docker-compose.test.yml    local dev loop: Postgres + Langfuse
@@ -267,7 +266,9 @@ Grant the relevant ADO project permission to use it and flip the
   - `infra.yml` — Terraform plan + apply per env, gated by ADO environments.
   - `app.yml` — build + scan → deploy dev → eval → canary prod.
 - Model changes are a PR against `app/models.yaml` — the pipeline validates
-  against live Foundry / AOAI quota and re-renders `app/litellm/config.yaml`.
+  against live Foundry / AOAI quota, and terraform renders the active subset
+  (intersection with the client's `foundry_deployments`) into the LiteLLM
+  container at deploy time.
 
 ## Security posture
 
