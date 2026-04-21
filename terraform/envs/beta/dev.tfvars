@@ -3,8 +3,8 @@ environment = "dev"
 location    = "westeurope"
 cost_center = "CC-BETA-AI"
 
-openwebui_image = "acroopenwebuishared.azurecr.io/openwebui:dev"
-litellm_image   = "acroopenwebuishared.azurecr.io/litellm:dev"
+openwebui_image = "acrowui18819.azurecr.io/openwebui:dev"
+litellm_image   = "acrowui18819.azurecr.io/litellm:dev"
 langfuse_image  = "langfuse/langfuse:2"
 
 # Feature intentionally omitted — no digest worker, no ACS, nothing to review.

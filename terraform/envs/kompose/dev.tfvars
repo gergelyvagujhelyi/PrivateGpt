@@ -3,12 +3,12 @@ environment = "dev"
 location    = "westeurope"
 cost_center = "CC-KOMPOSE-DEMO"
 
-openwebui_image = "acroopenwebuishared.azurecr.io/openwebui:dev"
-litellm_image   = "acroopenwebuishared.azurecr.io/litellm:dev"
+openwebui_image = "acrowui18819.azurecr.io/openwebui:dev"
+litellm_image   = "acrowui18819.azurecr.io/litellm:dev"
 langfuse_image  = "langfuse/langfuse:2"
-digest_image    = "acroopenwebuishared.azurecr.io/digest:dev"
-rag_image       = "acroopenwebuishared.azurecr.io/rag:dev"
-admin_image     = "acroopenwebuishared.azurecr.io/admin:dev"
+digest_image    = "acrowui18819.azurecr.io/digest:dev"
+rag_image       = "acrowui18819.azurecr.io/rag:dev"
+admin_image     = "acrowui18819.azurecr.io/admin:dev"
 
 entra_admin_app_client_id = "00000000-0000-0000-0000-000000000000"
 

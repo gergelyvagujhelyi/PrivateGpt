@@ -34,6 +34,17 @@ variable "secrets" {
   default = {}
 }
 
+# Opt-in ACR auth (see container_app module for details).
+variable "acr_login_server" {
+  type    = string
+  default = ""
+}
+
+variable "acr_id" {
+  type    = string
+  default = ""
+}
+
 variable "cpu" {
   type    = number
   default = 0.5
@@ -60,6 +71,17 @@ resource "azurerm_role_assignment" "kv_reader" {
   principal_id         = azurerm_user_assigned_identity.this.principal_id
 }
 
+locals {
+  uses_acr = var.acr_login_server != "" && var.acr_id != "" && startswith(var.image, var.acr_login_server)
+}
+
+resource "azurerm_role_assignment" "acr_pull" {
+  count                = local.uses_acr ? 1 : 0
+  scope                = var.acr_id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.this.principal_id
+}
+
 resource "azurerm_container_app_job" "this" {
   # Azure Container App Job names max at 32 chars.
   name                         = substr("caj-${var.name_prefix}-${var.name}", 0, 32)
@@ -73,6 +95,14 @@ resource "azurerm_container_app_job" "this" {
   identity {
     type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.this.id]
+  }
+
+  dynamic "registry" {
+    for_each = local.uses_acr ? [1] : []
+    content {
+      server   = var.acr_login_server
+      identity = azurerm_user_assigned_identity.this.id
+    }
   }
 
   schedule_trigger_config {
@@ -108,8 +138,11 @@ resource "azurerm_container_app_job" "this" {
     }
   }
 
-  depends_on = [azurerm_role_assignment.kv_reader]
-  tags       = var.tags
+  depends_on = [
+    azurerm_role_assignment.kv_reader,
+    azurerm_role_assignment.acr_pull,
+  ]
+  tags = var.tags
 
   lifecycle {
     ignore_changes = [template[0].container[0].image]
