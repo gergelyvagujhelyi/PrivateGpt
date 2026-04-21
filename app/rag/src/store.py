@@ -43,7 +43,9 @@ def upsert_source(
             """,
             (namespace, uri, etag, content_type, byte_size),
         )
-        return cur.fetchone()[0]
+        row = cur.fetchone()
+        assert row is not None, "INSERT ... RETURNING id must produce one row"
+        return row[0]
 
 
 def write_chunks(

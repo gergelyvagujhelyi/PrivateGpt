@@ -72,7 +72,11 @@ def validate_openai_quota(models: list[Model], subscription_id: str, location: s
     cred = DefaultAzureCredential()
     client = CognitiveServicesManagementClient(cred, subscription_id)
     try:
-        usages = {u.name.value: u for u in client.usages.list(location=location)}
+        usages = {
+            u.name.value: u
+            for u in client.usages.list(location=location)
+            if u.name is not None and u.name.value is not None
+        }
     except Exception as exc:  # noqa: BLE001
         print(f"warning: could not query quota ({exc}); skipping", file=sys.stderr)
         return errs
@@ -86,6 +90,9 @@ def validate_openai_quota(models: list[Model], subscription_id: str, location: s
         usage = usages.get(key)
         if usage is None:
             print(f"warning: no quota info for {key}", file=sys.stderr)
+            continue
+        if usage.limit is None or usage.current_value is None:
+            print(f"warning: partial quota info for {key}; skipping", file=sys.stderr)
             continue
         available = usage.limit - usage.current_value
         if want > available:
