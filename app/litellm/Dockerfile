@@ -1,4 +1,4 @@
-ARG LITELLM_VERSION=main-v1.52.0
+ARG LITELLM_VERSION=main-v1.83.7-stable
 FROM ghcr.io/berriai/litellm:${LITELLM_VERSION}
 
 COPY config.yaml /app/config.yaml
