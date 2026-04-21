@@ -55,6 +55,12 @@ variable "max_replicas" {
   type    = number
   default = 3
 }
+variable "startup_probe_path" {
+  type        = string
+  default     = ""
+  description = "If set, add an HTTP startup probe on this path. Use for apps whose cold-start exceeds the platform default (~15s)."
+}
+
 variable "tags" { type = map(string) }
 
 resource "azurerm_user_assigned_identity" "this" {
@@ -126,6 +132,19 @@ resource "azurerm_container_app" "this" {
           name        = env.value.name
           value       = try(env.value.value, null)
           secret_name = try(env.value.secret_name, null)
+        }
+      }
+
+      dynamic "startup_probe" {
+        for_each = var.startup_probe_path != "" ? [1] : []
+        content {
+          transport               = "HTTP"
+          port                    = var.target_port
+          path                    = var.startup_probe_path
+          initial_delay           = 10
+          interval_seconds        = 10
+          timeout                 = 5
+          failure_count_threshold = 18
         }
       }
     }
