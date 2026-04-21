@@ -10,6 +10,9 @@ parameters:
   - name: canary
     type: boolean
     default: false
+  - name: service_connection
+    type: string
+    default: ''
 
 steps:
   - checkout: self
@@ -17,7 +20,7 @@ steps:
   - task: AzureCLI@2
     displayName: Update Container Apps (${{ parameters.envName }})
     inputs:
-      azureSubscription: sc-owui-${{ parameters.client }}
+      azureSubscription: ${{ coalesce(parameters.service_connection, format('sc-owui-{0}', parameters.client)) }}
       scriptType: bash
       scriptLocation: inlineScript
       inlineScript: |
