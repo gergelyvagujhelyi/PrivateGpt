@@ -36,16 +36,12 @@ resource "azurerm_communication_service" "this" {
   tags                = var.tags
 }
 
-resource "azapi_resource" "domain_link" {
-  # azurerm has no first-class link resource yet; azapi patches the linked_domains field.
-  type      = "Microsoft.Communication/communicationServices@2023-04-01"
-  parent_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_group_name}"
-  name      = azurerm_communication_service.this.name
+resource "azapi_update_resource" "domain_link" {
+  type        = "Microsoft.Communication/communicationServices@2023-04-01"
+  resource_id = azurerm_communication_service.this.id
 
   body = {
-    location = "global"
     properties = {
-      dataLocation  = var.data_location
       linkedDomains = [azurerm_email_communication_service_domain.this.id]
     }
   }

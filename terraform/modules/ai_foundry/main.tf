@@ -1,6 +1,10 @@
 variable "name_prefix" { type = string }
 variable "resource_group_name" { type = string }
 variable "location" { type = string }
+variable "private_endpoints_enabled" {
+  type    = bool
+  default = true
+}
 variable "private_endpoint_subnet_id" { type = string }
 
 variable "private_dns_zone_ids" {
@@ -53,7 +57,7 @@ resource "azurerm_storage_account" "hub" {
   account_replication_type        = "LRS"
   account_kind                    = "StorageV2"
   min_tls_version                 = "TLS1_2"
-  public_network_access_enabled   = false
+  public_network_access_enabled   = !var.private_endpoints_enabled
   allow_nested_items_to_be_public = false
   shared_access_key_enabled       = true
 
@@ -63,6 +67,7 @@ resource "azurerm_storage_account" "hub" {
 # Hub workspace needs reachable blob storage; without a PE the workspace
 # creation would fail against the public-access-disabled account.
 resource "azurerm_private_endpoint" "hub_storage_blob" {
+  count               = var.private_endpoints_enabled ? 1 : 0
   name                = "pe-${azurerm_storage_account.hub.name}-blob"
   resource_group_name = var.resource_group_name
   location            = var.location
@@ -91,7 +96,7 @@ resource "azurerm_ai_services" "this" {
   sku_name              = "S0"
   custom_subdomain_name = "ais-${var.name_prefix}"
 
-  public_network_access = "Disabled"
+  public_network_access = var.private_endpoints_enabled ? "Disabled" : "Enabled"
 
   identity {
     type = "SystemAssigned"
@@ -116,7 +121,7 @@ resource "azurerm_ai_foundry" "this" {
 
   tags = var.tags
 
-  # Hub validates storage reachability during create — wait for the PE.
+  # Hub validates storage reachability during create — wait for the PE (if enabled).
   depends_on = [azurerm_private_endpoint.hub_storage_blob]
 }
 
@@ -184,6 +189,7 @@ data "azapi_resource_action" "claude_keys" {
 
 # ─── Private endpoint on the AI Services account ───
 resource "azurerm_private_endpoint" "this" {
+  count               = var.private_endpoints_enabled ? 1 : 0
   name                = "pe-ais-${var.name_prefix}"
   resource_group_name = var.resource_group_name
   location            = var.location

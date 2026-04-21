@@ -80,6 +80,7 @@ module "ai_foundry" {
   name_prefix                = local.name_prefix
   resource_group_name        = azurerm_resource_group.this.name
   location                   = coalesce(var.foundry_location, var.location)
+  private_endpoints_enabled  = var.foundry_private_endpoints_enabled
   private_endpoint_subnet_id = module.network.pe_subnet_id
   private_dns_zone_ids       = module.network.ai_services_private_dns_zone_ids
   blob_private_dns_zone_id   = module.network.blob_private_dns_zone_id
@@ -141,7 +142,7 @@ module "langfuse" {
   ]
 
   secrets = {
-    "langfuse-db-url"          = module.postgres.langfuse_connection_string
+    "langfuse-db-url"          = module.postgres.langfuse_db_url_secret_ref
     "langfuse-nextauth-secret" = module.keyvault.langfuse_nextauth_secret_ref
     "langfuse-salt"            = module.keyvault.langfuse_salt_ref
   }
@@ -230,7 +231,7 @@ module "openwebui" {
   ]
 
   secrets = {
-    "openwebui-db-url"    = module.postgres.openwebui_connection_string
+    "openwebui-db-url"    = module.postgres.openwebui_db_url_secret_ref
     "litellm-master-key"  = module.keyvault.litellm_master_key_ref
     "entra-client-id"     = module.keyvault.entra_client_id_ref
     "entra-client-secret" = module.keyvault.entra_client_secret_ref
@@ -298,7 +299,7 @@ locals {
   ] : []
 
   digest_secrets_common = local.digest_enabled ? {
-    "openwebui-db-url"      = module.postgres.openwebui_connection_string
+    "openwebui-db-url"      = module.postgres.openwebui_db_url_secret_ref
     "litellm-master-key"    = module.keyvault.litellm_master_key_ref
     "langfuse-pk"           = module.keyvault.langfuse_pk_ref
     "langfuse-sk"           = module.keyvault.langfuse_sk_ref
@@ -374,7 +375,7 @@ module "rag_ingest" {
   ]
 
   secrets = {
-    "openwebui-db-url"   = module.postgres.openwebui_connection_string
+    "openwebui-db-url"   = module.postgres.openwebui_db_url_secret_ref
     "litellm-master-key" = module.keyvault.litellm_master_key_ref
   }
 
@@ -421,7 +422,7 @@ module "admin" {
   ]
 
   secrets = {
-    "openwebui-db-url" = module.postgres.openwebui_connection_string
+    "openwebui-db-url" = module.postgres.openwebui_db_url_secret_ref
     "langfuse-pk"      = module.keyvault.langfuse_pk_ref
     "langfuse-sk"      = module.keyvault.langfuse_sk_ref
   }

@@ -31,8 +31,9 @@ features = {
   }
 }
 
+foundry_private_endpoints_enabled = false
 foundry_deployments = {
-  "gpt-4o-mini"            = { provider = "openai", model = "gpt-4o-mini", version = "2024-07-18", sku_name = "Standard", capacity = 50 }
+  "gpt-4o"                 = { provider = "openai", model = "gpt-4o", version = "2024-11-20", sku_name = "Standard", capacity = 30 }
   "text-embedding-3-large" = { provider = "openai", model = "text-embedding-3-large", version = "1", sku_name = "Standard", capacity = 50 }
 }
 
