@@ -20,7 +20,7 @@ pr:
 parameters:
   - name: client
     type: string
-    default: kompose
+    default: kdemo
     values: [kdemo, kompose, acme, beta]
   - name: service_connection
     displayName: ADO service connection (blank → sc-owui-<client>)
