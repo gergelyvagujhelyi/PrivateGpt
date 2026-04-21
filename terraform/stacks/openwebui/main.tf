@@ -248,19 +248,32 @@ module "openwebui" {
   tags = local.base_tags
 }
 
+locals {
+  # Compose the CAE LB hostname for each app instead of reading the CA's fqdn
+  # output. The CA's `ingress[0].fqdn` is a computed attribute — if it changes
+  # (e.g. when ingress_external flips), Terraform can't propagate the new value
+  # to dependents at plan time, so the FD origin would be left pointing at the
+  # stale FQDN for a full apply. Composing from CA name + env default domain
+  # is deterministic at plan time and re-plans the origin in the same apply.
+  openwebui_origin_host = "${module.openwebui.name}.${module.container_app_env.default_domain}"
+  admin_origin_host     = try("${module.admin[0].name}.${module.container_app_env.default_domain}", null)
+}
+
 module "frontdoor" {
   source = "../../modules/frontdoor"
 
-  name_prefix         = local.name_prefix
-  resource_group_name = azurerm_resource_group.this.name
-  origin_host_name    = module.openwebui.fqdn
-  origin_host_header  = module.openwebui.fqdn
-  allowed_ip_ranges   = var.allowed_ip_ranges
-  log_analytics_id    = module.observability.log_analytics_id
+  name_prefix            = local.name_prefix
+  resource_group_name    = azurerm_resource_group.this.name
+  origin_host_name       = local.openwebui_origin_host
+  origin_host_header     = local.openwebui_origin_host
+  origin_location        = var.location
+  private_link_target_id = module.container_app_env.id
+  allowed_ip_ranges      = var.allowed_ip_ranges
+  log_analytics_id       = module.observability.log_analytics_id
 
   # Each enabled secondary feature that needs public reach gets its own Front Door endpoint.
   secondary_origins = merge(
-    local.admin_enabled ? { admin = { host_name = module.admin[0].fqdn } } : {},
+    local.admin_enabled ? { admin = { host_name = local.admin_origin_host } } : {},
   )
 
   tags = local.base_tags
