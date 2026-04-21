@@ -287,10 +287,16 @@ output "secondary_endpoints" {
   value = { for k, e in azurerm_cdn_frontdoor_endpoint.secondary : k => "https://${e.host_name}" }
 }
 
-# Test surface — exposed so tftest can assert the DRS override flips with the flag.
-output "drs_override_count" {
+# Test surface — exposed so tftest can assert the signup-avatar exclusion
+# flips with the flag. Scoped to overrides carrying the profile_image_url
+# exclusion specifically, so unrelated DRS overrides (e.g. rule-level
+# disables for chat-payload false positives) don't affect this count.
+output "signup_avatar_override_count" {
   value = length([
-    for m in azurerm_cdn_frontdoor_firewall_policy.this.managed_rule :
-    m.override if m.type == "Microsoft_DefaultRuleSet"
-  ][0])
+    for o in [
+      for m in azurerm_cdn_frontdoor_firewall_policy.this.managed_rule :
+      m.override if m.type == "Microsoft_DefaultRuleSet"
+    ][0] : o
+    if anytrue([for e in o.exclusion : e.selector == "profile_image_url"])
+  ])
 }
