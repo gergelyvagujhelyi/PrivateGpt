@@ -44,7 +44,8 @@ ENV WEBUI_NAME="Client Assistant" \
     ENABLE_COMMUNITY_SHARING=false \
     ENABLE_MESSAGE_RATING=true \
     TASK_MODEL="claude-haiku-4-5" \
-    RAG_EMBEDDING_MODEL="text-embedding-3-large"
+    RAG_EMBEDDING_MODEL="text-embedding-3-large" \
+    RAG_EMBEDDING_ENGINE="openai"
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD wget -q -O- http://localhost:8080/health || exit 1
