@@ -25,10 +25,11 @@ RUN apk --no-cache upgrade \
             /usr/lib/python*/site-packages/nodejs_wheel/lib/node_modules/npm \
             2>/dev/null || true
 
-COPY config.yaml /app/config.yaml
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-ENV LITELLM_CONFIG=/app/config.yaml \
-    PORT=4000
+ENV PORT=4000
 
 EXPOSE 4000
-CMD ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "4"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD []

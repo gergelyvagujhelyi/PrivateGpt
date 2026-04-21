@@ -117,6 +117,21 @@ locals {
     for name, ref in module.ai_foundry.claude_key_secret_refs :
     "maas-${name}-key" => ref
   }
+
+  # LiteLLM config is rendered per-client at deploy time from the intersection
+  # of app/models.yaml (the global catalogue) and var.foundry_deployments
+  # (the per-client deployment subset). Baking a global config.yaml into the
+  # image caused LiteLLM to fail-load its entire model_list whenever a
+  # referenced env var was missing for a model this client didn't deploy.
+  models_catalog = yamldecode(file("${path.module}/../../../app/models.yaml")).models
+  active_models = [
+    for m in local.models_catalog : m
+    if contains(keys(var.foundry_deployments), m.name)
+  ]
+  litellm_config_yaml = templatefile(
+    "${path.module}/templates/litellm-config.yaml.tftpl",
+    { models = local.active_models }
+  )
 }
 
 module "container_app_env" {
@@ -191,6 +206,7 @@ module "litellm" {
       { name = "LANGFUSE_SECRET_KEY", secret_name = "langfuse-sk" },
       { name = "LANGFUSE_HOST", value = "https://${module.langfuse.fqdn}" },
       { name = "LITELLM_MASTER_KEY", secret_name = "litellm-master-key" },
+      { name = "LITELLM_CONFIG_YAML", value = local.litellm_config_yaml },
     ],
     local.claude_endpoint_env,
     local.claude_key_secret_env,
