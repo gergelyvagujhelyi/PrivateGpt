@@ -64,16 +64,15 @@ steps:
           fi
         done
 
-        # Optional Container Apps Jobs — only update if they exist in this stack
-        declare -A JOB_IMAGE=(
-          [digest-daily]=digest
-          [digest-weekly]=digest
-          [rag-ingest]=rag
-        )
-        for job in "${!JOB_IMAGE[@]}"; do
+        # Optional Container Apps Jobs — only update if they exist in this stack.
+        # Encode the job → image mapping as whitespace-separated "job:image"
+        # pairs so this works on macOS's default bash 3.2 (no associative arrays).
+        for pair in "digest-daily:digest" "digest-weekly:digest" "rag-ingest:rag"; do
+          job="${pair%%:*}"
+          jobimage="${pair##*:}"
           jobname="caj-${PREFIX}-${job}"
           if az containerapp job show -g "$RG" -n "$jobname" >/dev/null 2>&1; then
-            image="${{ parameters.acrName }}.azurecr.io/${JOB_IMAGE[$job]}:${{ parameters.sha }}"
+            image="${{ parameters.acrName }}.azurecr.io/${jobimage}:${SHA_FULL}"
             echo "==> deploying job ${jobname} := ${image}"
             az containerapp job update -g "$RG" -n "$jobname" --image "$image"
           else
