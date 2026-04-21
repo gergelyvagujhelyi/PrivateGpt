@@ -113,18 +113,15 @@ stages:
                 cd $(stackDir)
                 envsubst < ../../envs/${{ parameters.client }}/backend.hcl > backend.generated.hcl
                 terraform init -backend-config=backend.generated.hcl
+                # Plan here is a gate only — diff is visible in job logs.
+                # The Apply stage re-plans + applies in one shot, avoiding the
+                # stale-plan and duplicate-artifact failures that split stages
+                # produced when state moved between plan and apply, or when a
+                # single build republished a static artifact name on retry.
                 terraform plan \
                   -var-file=../../envs/${{ parameters.client }}/$(envName).tfvars \
-                  -out=tfplan.$(envName) \
                   -detailed-exitcode || EXIT=$?
-                terraform show -no-color tfplan.$(envName) > tfplan.$(envName).txt
                 [[ "${EXIT:-0}" == "1" ]] && exit 1 || true
-
-          - publish: $(stackDir)/tfplan.$(envName)
-            artifact: tfplan-$(envName)
-
-          - publish: $(stackDir)/tfplan.$(envName).txt
-            artifact: tfplan-$(envName)-text
 
   - stage: Apply_Dev
     dependsOn: Validate
