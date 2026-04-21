@@ -20,7 +20,7 @@ pr:
 parameters:
   - name: client
     type: string
-    default: kompose
+    default: kdemo
     values: [kdemo, kompose, acme, beta]
   - name: service_connection
     displayName: ADO service connection (blank → sc-owui-<client>)
@@ -105,8 +105,12 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
+                set -euo pipefail
                 export AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-                python scripts/validate_models.py app/models.yaml
+                # validate_models.py reads foundry_location and
+                # foundry_deployments from tfvars itself.
+                python scripts/validate_models.py app/models.yaml \
+                  --tfvars "terraform/envs/${{ parameters.client }}/dev.tfvars"
 
           - script: |
               python scripts/render_litellm_config.py app/models.yaml --out app/litellm/config.yaml

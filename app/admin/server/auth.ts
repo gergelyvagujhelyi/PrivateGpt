@@ -8,11 +8,18 @@ const jwks = createRemoteJWKSet(
   new URL(`https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`),
 );
 
-export async function verifyEntraJwt(token: string): Promise<string> {
+export interface AuthenticatedUser {
+  userId: string;
+  email: string;
+}
+
+export async function verifyEntraJwt(token: string): Promise<AuthenticatedUser> {
   const { payload } = await jwtVerify(token, jwks, { issuer, audience });
   const userId = (payload.oid ?? payload.sub) as string | undefined;
   if (!userId) throw new Error("token missing oid/sub");
-  return userId;
+  const email = (payload.email ?? payload.preferred_username) as string | undefined;
+  if (!email) throw new Error("token missing email/preferred_username");
+  return { userId, email };
 }
 
 function requireEnv(key: string): string {

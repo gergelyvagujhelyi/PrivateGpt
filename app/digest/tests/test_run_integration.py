@@ -16,6 +16,7 @@ import pytest
 
 from src import main
 from src.langfuse_client import Activity, Stats
+from src.migrations import ensure_schema
 
 pytestmark = pytest.mark.integration
 
@@ -35,7 +36,6 @@ def pg_url():
 @pytest.fixture
 def seeded_db(pg_url: str, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DATABASE_URL", pg_url)
-    monkeypatch.setattr(main, "DATABASE_URL", pg_url)
 
     with psycopg.connect(pg_url) as conn:
         with conn.cursor() as cur:
@@ -49,6 +49,10 @@ def seeded_db(pg_url: str, monkeypatch: pytest.MonkeyPatch):
                     name TEXT NOT NULL
                 )
             """)
+        conn.commit()
+        # The app's migration creates user_preferences + digest_migrations.
+        # Without this, _seed_user() inserts into a table that doesn't exist yet.
+        ensure_schema(conn)
         conn.commit()
 
     return pg_url
@@ -81,7 +85,7 @@ def stubbed_externals(monkeypatch: pytest.MonkeyPatch):
         stats=Stats(trace_count=1, total_tokens=100, cost_usd=0.01),
     )
     monkeypatch.setattr(main, "fetch_user_activity", lambda user_id, since: activity)
-    monkeypatch.setattr(main, "summarise", lambda activity: "- worked on email drafting")
+    monkeypatch.setattr(main, "summarise", lambda user_id, since: "- worked on email drafting")
 
     sender = MagicMock()
     monkeypatch.setattr(main, "EmailSender", lambda: sender)
@@ -118,12 +122,13 @@ def test_one_user_failure_does_not_abort_run(seeded_db, stubbed_externals, monke
     _seed_user(seeded_db, "u-ok", "ok@example.test", "daily")
     _seed_user(seeded_db, "u-broken", "broken@example.test", "daily")
 
-    original_send = stubbed_externals.send
-
     def flaky(**kwargs):
         if kwargs["to"] == "broken@example.test":
             raise RuntimeError("ACS down")
-        return original_send(**kwargs)
+        # Non-broken path: return normally. The mock still records the call
+        # (side_effect runs *after* the call is recorded), so
+        # call_args_list captures u-ok's send.
+        return None
 
     stubbed_externals.send.side_effect = flaky
 

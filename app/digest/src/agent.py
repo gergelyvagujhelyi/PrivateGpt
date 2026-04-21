@@ -58,7 +58,11 @@ def summarise(user_id: str, since: datetime) -> str:
 
     for step in range(MAX_STEPS):
         t0 = time.monotonic()
-        resp = _client().chat.completions.create(
+        # LiteLLM-routed call: `model` is a non-OpenAI name (e.g. claude-haiku-4-5)
+        # that the OpenAI SDK's Literal doesn't know, and messages/tools are
+        # plain dicts rather than the SDK's TypedDicts. Runtime works fine;
+        # the SDK's stricter overload set rejects it at type-check time.
+        resp = _client().chat.completions.create(  # type: ignore[call-overload]
             model=MODEL,
             temperature=0,
             user=f"digest-agent-{user_id}",
