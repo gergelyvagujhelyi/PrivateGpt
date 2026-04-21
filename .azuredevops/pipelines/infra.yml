@@ -20,6 +20,14 @@ parameters:
     type: string
     default: acme
     values: [acme, beta]
+  - name: include_test
+    displayName: Also plan + apply test env
+    type: boolean
+    default: false
+  - name: include_prod
+    displayName: Also plan + apply prod env
+    type: boolean
+    default: false
 
 variables:
   - group: owui-${{ parameters.client }}   # holds ARM_CLIENT_ID, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID
@@ -37,9 +45,11 @@ stages:
           name: Default
         strategy:
           matrix:
-            dev:  { envName: dev }
-            test: { envName: test }
-            prod: { envName: prod }
+            dev: { envName: dev }
+            ${{ if eq(parameters.include_test, true) }}:
+              test: { envName: test }
+            ${{ if eq(parameters.include_prod, true) }}:
+              prod: { envName: prod }
         steps:
           - checkout: self
 
@@ -131,38 +141,43 @@ stages:
                     tfVersion: $(tfVersion)
                     stackDir: $(stackDir)
 
-  - stage: Apply_Test
-    dependsOn: Apply_Dev
-    jobs:
-      - deployment: apply_test
-        environment: owui-${{ parameters.client }}-test
-        pool:
-          name: Default
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - template: templates/terraform-apply.yml
-                  parameters:
-                    envName: test
-                    client: ${{ parameters.client }}
-                    tfVersion: $(tfVersion)
-                    stackDir: $(stackDir)
+  - ${{ if eq(parameters.include_test, true) }}:
+    - stage: Apply_Test
+      dependsOn: Apply_Dev
+      jobs:
+        - deployment: apply_test
+          environment: owui-${{ parameters.client }}-test
+          pool:
+            name: Default
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                  - template: templates/terraform-apply.yml
+                    parameters:
+                      envName: test
+                      client: ${{ parameters.client }}
+                      tfVersion: $(tfVersion)
+                      stackDir: $(stackDir)
 
-  - stage: Apply_Prod
-    dependsOn: Apply_Test
-    jobs:
-      - deployment: apply_prod
-        environment: owui-${{ parameters.client }}-prod
-        pool:
-          name: Default
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - template: templates/terraform-apply.yml
-                  parameters:
-                    envName: prod
-                    client: ${{ parameters.client }}
-                    tfVersion: $(tfVersion)
-                    stackDir: $(stackDir)
+  - ${{ if eq(parameters.include_prod, true) }}:
+    - stage: Apply_Prod
+      dependsOn:
+        - Apply_Dev
+        - ${{ if eq(parameters.include_test, true) }}:
+          - Apply_Test
+      jobs:
+        - deployment: apply_prod
+          environment: owui-${{ parameters.client }}-prod
+          pool:
+            name: Default
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                  - template: templates/terraform-apply.yml
+                    parameters:
+                      envName: prod
+                      client: ${{ parameters.client }}
+                      tfVersion: $(tfVersion)
+                      stackDir: $(stackDir)
