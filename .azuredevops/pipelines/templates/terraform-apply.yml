@@ -21,11 +21,8 @@ steps:
       terraform -version
     displayName: Install Terraform ${{ parameters.tfVersion }}
 
-  - download: current
-    artifact: tfplan-${{ parameters.envName }}
-
   - task: AzureCLI@2
-    displayName: terraform apply (${{ parameters.envName }})
+    displayName: terraform plan + apply (${{ parameters.envName }})
     inputs:
       azureSubscription: ${{ coalesce(parameters.service_connection, format('sc-owui-{0}', parameters.client)) }}
       scriptType: bash
@@ -45,5 +42,7 @@ steps:
         cd ${{ parameters.stackDir }}
         envsubst < ../../envs/${{ parameters.client }}/backend.hcl > backend.generated.hcl
         terraform init -backend-config=backend.generated.hcl
-        cp $(Pipeline.Workspace)/tfplan-${{ parameters.envName }}/tfplan.${{ parameters.envName }} ./tfplan
+        terraform plan \
+          -var-file=../../envs/${{ parameters.client }}/${{ parameters.envName }}.tfvars \
+          -out=tfplan
         terraform apply -auto-approve tfplan
