@@ -8,6 +8,7 @@ trigger:
       - app/**
       - scripts/**
       - .azuredevops/pipelines/app.yml
+      - .azuredevops/pipelines/templates/**
 
 pr:
   branches:
@@ -16,6 +17,8 @@ pr:
     include:
       - app/**
       - scripts/**
+      - .azuredevops/pipelines/app.yml
+      - .azuredevops/pipelines/templates/**
 
 parameters:
   - name: client
