@@ -105,8 +105,16 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
+                set -euo pipefail
                 export AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-                python scripts/validate_models.py app/models.yaml
+                # OpenAI deployments live in foundry_location (may differ from
+                # the VNet region); quota must be checked against that region.
+                TFVARS="terraform/envs/${{ parameters.client }}/dev.tfvars"
+                FOUNDRY_LOC=$(awk -F'"' '/^foundry_location/{print $2}' "$TFVARS")
+                LOC=$(awk -F'"' '/^location[[:space:]]*=/{print $2}' "$TFVARS")
+                export AZURE_LOCATION=${FOUNDRY_LOC:-$LOC}
+                echo "validating against AZURE_LOCATION=$AZURE_LOCATION"
+                python scripts/validate_models.py app/models.yaml --tfvars "$TFVARS"
 
           - script: |
               python scripts/render_litellm_config.py app/models.yaml --out app/litellm/config.yaml

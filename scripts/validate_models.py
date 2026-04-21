@@ -3,12 +3,18 @@
 Quota validation is provider-specific:
   - openai: azurerm quota usage API (retained from previous version)
   - anthropic (Foundry MaaS): no quota — pay per token.
+
+Schema validation runs against models.yaml always. Quota validation, if
+enabled, uses per-client foundry_deployments from tfvars when --tfvars is
+given — models.yaml's sku_name/capacity are defaults that any client may
+override, so validating the catalog defaults gives the wrong answer.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from dataclasses import dataclass
 from typing import Optional
@@ -40,6 +46,51 @@ def load(path: str) -> list[Model]:
     with open(path) as f:
         raw = yaml.safe_load(f)
     return [Model(**m) for m in raw["models"]]
+
+
+# One line per deployment in foundry_deployments, e.g.:
+#   "gpt-4o" = { provider = "openai", model = "gpt-4o", version = "...", sku_name = "Standard", capacity = 30 }
+# Full HCL parsing (python-hcl2) keeps the surrounding quotes on string tokens,
+# which makes post-processing fiddly; the single-line shape is reliable.
+_DEPLOYMENT_LINE = re.compile(
+    r'^\s*"(?P<key>[^"]+)"\s*=\s*\{\s*(?P<body>.*?)\s*\}\s*$',
+    re.MULTILINE,
+)
+_KV = re.compile(r'(\w+)\s*=\s*(?:"([^"]*)"|(\d+))')
+
+
+def load_foundry_deployments(tfvars_path: str) -> list[Model]:
+    """Read foundry_deployments = { ... } from a .tfvars and return per-line
+    Model entries for quota validation. Anthropic entries are kept so callers
+    can filter by provider — only openai entries affect quota."""
+    text = open(tfvars_path).read()
+    # Isolate the foundry_deployments block to avoid matching inside comments
+    # elsewhere in the file.
+    m = re.search(
+        r"foundry_deployments\s*=\s*\{(?P<body>.*?)^\s*\}\s*$",
+        text,
+        re.DOTALL | re.MULTILINE,
+    )
+    if not m:
+        return []
+    deployments = []
+    for entry in _DEPLOYMENT_LINE.finditer(m.group("body")):
+        fields: dict[str, int | str] = {}
+        for k, v_str, v_int in _KV.findall(entry.group("body")):
+            fields[k] = int(v_int) if v_int else v_str
+        capacity = fields.get("capacity")
+        deployments.append(
+            Model(
+                name=str(fields.get("model") or entry.group("key")),
+                provider=str(fields.get("provider", "")),
+                version=str(fields.get("version", "")),
+                purpose="chat",  # not represented in tfvars; not needed for quota
+                exposed_as=entry.group("key"),
+                sku_name=str(fields["sku_name"]) if "sku_name" in fields else None,
+                capacity=capacity if isinstance(capacity, int) else None,
+            )
+        )
+    return deployments
 
 
 def validate_schema(models: list[Model]) -> list[str]:
@@ -94,11 +145,14 @@ def validate_openai_quota(models: list[Model], subscription_id: str, location: s
         if usage.limit is None or usage.current_value is None:
             print(f"warning: partial quota info for {key}; skipping", file=sys.stderr)
             continue
-        available = usage.limit - usage.current_value
-        if want > available:
+        # Compare against limit, not limit - current_value. current_value
+        # includes this client's own already-deployed capacity, so the
+        # previous (limit - current) check double-counted on a re-apply and
+        # flagged idempotent deployments as quota-exceeded.
+        if want > usage.limit:
             errs.append(
-                f"quota: requested {want} for {key} but only {available:.0f} remaining "
-                f"(limit={usage.limit:.0f}, used={usage.current_value:.0f})"
+                f"quota: requested {want} for {key} but limit is {usage.limit:.0f} "
+                f"(currently used={usage.current_value:.0f})"
             )
     return errs
 
@@ -107,6 +161,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("models_yaml")
     ap.add_argument("--skip-quota", action="store_true")
+    ap.add_argument(
+        "--tfvars",
+        help="Per-client tfvars path; quota is validated against foundry_deployments "
+             "from here rather than models.yaml defaults.",
+    )
     args = ap.parse_args()
 
     models = load(args.models_yaml)
@@ -116,7 +175,8 @@ def main() -> int:
         sub = os.environ.get("AZURE_SUBSCRIPTION_ID")
         loc = os.environ.get("AZURE_LOCATION", "westeurope")
         if sub:
-            errs += validate_openai_quota(models, sub, loc)
+            quota_targets = load_foundry_deployments(args.tfvars) if args.tfvars else models
+            errs += validate_openai_quota(quota_targets, sub, loc)
         else:
             print("AZURE_SUBSCRIPTION_ID not set; skipping openai quota check", file=sys.stderr)
 
