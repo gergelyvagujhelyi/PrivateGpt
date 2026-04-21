@@ -220,6 +220,9 @@ module "openwebui" {
     { name = "DATABASE_URL", secret_name = "openwebui-db-url" },
     { name = "OPENAI_API_BASE_URL", value = "https://${module.litellm.fqdn}/v1" },
     { name = "OPENAI_API_KEY", secret_name = "litellm-master-key" },
+    # LiteLLM is the only upstream — Ollama probes would fail and surface
+    # "Failed to fetch models" on the admin Models page.
+    { name = "ENABLE_OLLAMA_API", value = "false" },
     { name = "WEBUI_AUTH", value = "true" },
     { name = "ENABLE_OAUTH_SIGNUP", value = "true" },
     { name = "OAUTH_PROVIDER_NAME", value = "Microsoft" },
