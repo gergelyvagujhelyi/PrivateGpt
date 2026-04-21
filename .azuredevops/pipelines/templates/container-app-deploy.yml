@@ -27,6 +27,12 @@ steps:
         set -euo pipefail
         RG="rg-owui-${{ parameters.client }}-${{ parameters.envName }}"
         PREFIX="owui-${{ parameters.client }}-${{ parameters.envName }}"
+        SHA_FULL="${{ parameters.sha }}"
+        # Azure caps revision name at 54 chars (app name + "--" + suffix).
+        # `ca-owui-<client>-<env>-<app>` is already ~27 chars for the longest
+        # app name, leaving ~25 for the suffix. Use the short SHA + still
+        # collision-resistant; keep an upper bound in case of a long client name.
+        SHA_SHORT="${SHA_FULL:0:12}"
 
         # Container Apps — core always present, admin optional (skipped silently when feature is off).
         for app in openwebui litellm admin; do
@@ -35,15 +41,15 @@ steps:
             echo "==> ${name} not present — skipping"
             continue
           fi
-          image="${{ parameters.acrName }}.azurecr.io/${app}:${{ parameters.sha }}"
+          image="${{ parameters.acrName }}.azurecr.io/${app}:${SHA_FULL}"
           echo "==> deploying ${name} := ${image}"
 
           if [[ "${{ parameters.canary }}" == "True" ]]; then
             # Create a new revision at 10% traffic, then ramp.
-            az containerapp update -g "$RG" -n "$name" --image "$image" --revision-suffix "${{ parameters.sha }}"
+            az containerapp update -g "$RG" -n "$name" --image "$image" --revision-suffix "$SHA_SHORT"
             az containerapp ingress traffic set -g "$RG" -n "$name" \
               --revision-weight latest=10 \
-              --revision-weight "$(az containerapp revision list -g "$RG" -n "$name" --query "[?properties.active && name!='${name}--${{ parameters.sha }}'].name | [0]" -o tsv)=90"
+              --revision-weight "$(az containerapp revision list -g "$RG" -n "$name" --query "[?properties.active && name!='${name}--${SHA_SHORT}'].name | [0]" -o tsv)=90"
 
             # Smoke probe
             fqdn=$(az containerapp show -g "$RG" -n "$name" --query properties.configuration.ingress.fqdn -o tsv)
@@ -54,7 +60,7 @@ steps:
 
             az containerapp ingress traffic set -g "$RG" -n "$name" --revision-weight latest=100
           else
-            az containerapp update -g "$RG" -n "$name" --image "$image" --revision-suffix "${{ parameters.sha }}"
+            az containerapp update -g "$RG" -n "$name" --image "$image" --revision-suffix "$SHA_SHORT"
           fi
         done
 
