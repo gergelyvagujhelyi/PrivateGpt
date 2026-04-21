@@ -2,13 +2,22 @@
 ARG OPENWEBUI_VERSION=v0.8.12
 FROM ghcr.io/open-webui/open-webui:${OPENWEBUI_VERSION}
 
-# Layer-upgrade Python deps the upstream image ships with known CVEs.
+# Layer security patches on top of the Debian-12 upstream image.
 # Revisit every upstream bump: upstream may catch up and this can shrink.
 USER root
-RUN pip install --no-cache-dir --upgrade \
+RUN apt-get update \
+  && apt-get upgrade -y --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/* \
+  && pip install --no-cache-dir --upgrade \
         'orjson>=3.11.6' \
         'pillow>=12.2.0' \
         'python-multipart>=0.0.22' \
+        'Brotli>=1.2.0' \
+        'PyJWT>=2.12.0' \
+        'aiohttp>=3.13.3' \
+        'black>=26.3.1' \
+        'jaraco.context>=6.1.0' \
+        'wheel>=0.46.2' \
   && rm -rf /root/.cache/pip
 
 # Runtime is Python + the pre-built SvelteKit static bundle; npm itself
