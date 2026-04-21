@@ -7,6 +7,7 @@ trigger:
     include:
       - terraform/**
       - .azuredevops/pipelines/infra.yml
+      - .azuredevops/pipelines/templates/**
 
 pr:
   branches:
@@ -14,6 +15,8 @@ pr:
   paths:
     include:
       - terraform/**
+      - .azuredevops/pipelines/infra.yml
+      - .azuredevops/pipelines/templates/**
 
 parameters:
   - name: client
