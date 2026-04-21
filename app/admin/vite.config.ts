@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -14,5 +15,11 @@ export default defineConfig({
     proxy: {
       "/api": "http://localhost:4000",
     },
+  },
+  // Tests live alongside server + shared code; override Vite's client-only
+  // root so vitest scans the whole package.
+  test: {
+    root: ".",
+    include: ["{server,shared,client}/**/*.{test,spec}.?(c|m)[jt]s?(x)"],
   },
 });
