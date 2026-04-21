@@ -118,7 +118,7 @@ def call_tool(name: str, arguments_json: str) -> str:
         args = json.loads(arguments_json or "{}")
         result = fn(**args)
         return json.dumps(result)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         # Keep the real error out of the LLM context — only return a code + id.
         # Full details go to structlog so ops can correlate.
         log.exception("tool_failed", tool=name, correlation_id=correlation_id, error=str(exc))

@@ -8,7 +8,7 @@ with Langfuse + LLM + ACS stubbed out. Exercises:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import psycopg
@@ -69,7 +69,7 @@ def _seed_user(pg_url: str, user_id: str, email: str, freq: str, unsub: bool = F
                   unsubscribed_at  = EXCLUDED.unsubscribed_at,
                   last_sent_at     = NULL
             """,
-            (user_id, freq, datetime.now(timezone.utc) if unsub else None),
+            (user_id, freq, datetime.now(UTC) if unsub else None),
         )
         conn.commit()
 

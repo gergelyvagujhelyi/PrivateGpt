@@ -11,7 +11,6 @@ because LiteLLM's langfuse success_callback is enabled in config.yaml.
 from __future__ import annotations
 
 import functools
-import json
 import os
 import time
 from datetime import datetime

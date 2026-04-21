@@ -6,3 +6,4 @@ respx==0.21.1
 ruff==0.7.4
 mypy==1.13.0
 types-psycopg2==2.9.21.20240819
+types-PyYAML==6.0.12.20240917

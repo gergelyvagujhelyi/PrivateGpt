@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from .agent import SYSTEM_PROMPT, summarise as _agent_summarise  # noqa: F401
+from .agent import SYSTEM_PROMPT
+from .agent import summarise as _agent_summarise
 
 __all__ = ["SYSTEM_PROMPT", "summarise"]
 

@@ -7,6 +7,7 @@ tools, feeds results back, and terminates with the model's final text.
 from __future__ import annotations
 
 import json
+from datetime import UTC
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -66,8 +67,8 @@ def test_agent_calls_tools_then_composes_summary(stub_llm: MagicMock):
         _resp(_msg(content="- drafted an email\n- debugged a script\n- 2 conversations, 412 tokens")),
     ]
 
-    from datetime import datetime, timezone
-    out = agent.summarise("u1", datetime(2026, 4, 14, tzinfo=timezone.utc))
+    from datetime import datetime
+    out = agent.summarise("u1", datetime(2026, 4, 14, tzinfo=UTC))
 
     assert "drafted" in out
     assert stub_llm.chat.completions.create.call_count == 2
@@ -85,13 +86,13 @@ def test_agent_bails_after_max_steps(stub_llm: MagicMock, monkeypatch):
     stub_llm.chat.completions.create.return_value = _resp(_msg(tool_calls=[
         {"id": "c", "name": "get_chat_titles", "args": {"user_id": "u", "since_iso": "2026-04-14T00:00:00+00:00"}},
     ]))
-    from datetime import datetime, timezone
+    from datetime import datetime
     with pytest.raises(RuntimeError, match="exceeded"):
-        agent.summarise("u", datetime(2026, 4, 14, tzinfo=timezone.utc))
+        agent.summarise("u", datetime(2026, 4, 14, tzinfo=UTC))
 
 
 def test_agent_returns_empty_when_model_returns_no_tools_no_content(stub_llm: MagicMock):
     stub_llm.chat.completions.create.return_value = _resp(_msg(content=""))
-    from datetime import datetime, timezone
-    out = agent.summarise("u", datetime(2026, 4, 14, tzinfo=timezone.utc))
+    from datetime import datetime
+    out = agent.summarise("u", datetime(2026, 4, 14, tzinfo=UTC))
     assert out == ""

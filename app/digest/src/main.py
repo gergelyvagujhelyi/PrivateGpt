@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import psycopg
 import structlog
@@ -63,7 +63,7 @@ def mark_sent(conn: psycopg.Connection, user_id: str) -> None:
 
 
 def run() -> int:
-    since = datetime.now(timezone.utc) - WINDOW
+    since = datetime.now(UTC) - WINDOW
     sender = EmailSender()
     template = tmpl_env.get_template("digest.html.j2")
 
@@ -105,7 +105,7 @@ def run() -> int:
                 conn.commit()
                 bound.info("sent")
                 sent += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 conn.rollback()
                 bound.exception("digest_failed", error=str(exc))
                 errored += 1
