@@ -67,7 +67,7 @@ def write_chunks(
     ) as copy:
         import json
 
-        copy.set_types(["uuid", "text", "int4", "text", "vector", "jsonb"])
+        copy.set_types(["uuid", "text", "int4", "text", "halfvec", "jsonb"])
         n = 0
         for idx, text, vec, meta in rows:
             copy.write_row((source_id, namespace, idx, text, vec, json.dumps(meta)))
@@ -87,11 +87,11 @@ def similarity_search(
             SELECT c.content,
                    c.metadata,
                    s.source_uri,
-                   1 - (c.embedding <=> %s::vector) AS score
+                   1 - (c.embedding <=> %s::halfvec) AS score
               FROM rag_chunks c
               JOIN rag_sources s ON s.id = c.source_id
              WHERE c.namespace = %s
-          ORDER BY c.embedding <=> %s::vector
+          ORDER BY c.embedding <=> %s::halfvec
              LIMIT %s
             """,
             (query_vec, namespace, query_vec, top_k),

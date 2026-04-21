@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS rag_sources (
 -- Dimension 3072 matches text-embedding-3-large (src/embed.py:EMBEDDING_DIM).
 -- A model swap needs a schema migration before deploy; embed.py fails fast if
 -- the model returns a different dim.
+--
+-- HALFVEC (float16) not VECTOR (float32): pgvector's HNSW only indexes up to
+-- 2000 dims on VECTOR, but 4000 dims on HALFVEC. Storing at half precision is
+-- the canonical workaround for text-embedding-3-large's 3072 dims. Precision
+-- loss is negligible for cosine similarity; embeddings from the OpenAI API
+-- auto-downcast on INSERT.
 CREATE TABLE IF NOT EXISTS rag_chunks (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source_id   UUID NOT NULL REFERENCES rag_sources(id) ON DELETE CASCADE,
@@ -22,12 +28,12 @@ CREATE TABLE IF NOT EXISTS rag_chunks (
     chunk_index INT NOT NULL,
     content     TEXT NOT NULL,
     metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
-    embedding   VECTOR(3072) NOT NULL,
+    embedding   HALFVEC(3072) NOT NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS rag_chunks_namespace_idx    ON rag_chunks (namespace);
 CREATE INDEX IF NOT EXISTS rag_chunks_source_idx       ON rag_chunks (source_id);
 CREATE INDEX IF NOT EXISTS rag_chunks_embedding_hnsw
-    ON rag_chunks USING hnsw (embedding vector_cosine_ops)
+    ON rag_chunks USING hnsw (embedding halfvec_cosine_ops)
     WITH (m = 16, ef_construction = 64);
