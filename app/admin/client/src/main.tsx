@@ -28,29 +28,33 @@ function BootstrapError({ error }: { error: unknown }) {
   );
 }
 
-try {
-  const config = await fetchAppConfig();
-  const msal = new PublicClientApplication(buildMsalConfig(config));
-  await msal.initialize();
+// Wrapped in an async IIFE — top-level await needs an ES2022 module target,
+// and Vite's default target (ES2020) rejects it.
+(async () => {
+  try {
+    const config = await fetchAppConfig();
+    const msal = new PublicClientApplication(buildMsalConfig(config));
+    await msal.initialize();
 
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
-  });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+    });
 
-  root.render(
-    <React.StrictMode>
-      <AppConfigContext.Provider value={config}>
-        <MsalProvider instance={msal}>
-          <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </QueryClientProvider>
-        </MsalProvider>
-      </AppConfigContext.Provider>
-    </React.StrictMode>,
-  );
-} catch (err) {
-  console.error("admin bootstrap failed", err);
-  root.render(<BootstrapError error={err} />);
-}
+    root.render(
+      <React.StrictMode>
+        <AppConfigContext.Provider value={config}>
+          <MsalProvider instance={msal}>
+            <QueryClientProvider client={queryClient}>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </QueryClientProvider>
+          </MsalProvider>
+        </AppConfigContext.Provider>
+      </React.StrictMode>,
+    );
+  } catch (err) {
+    console.error("admin bootstrap failed", err);
+    root.render(<BootstrapError error={err} />);
+  }
+})();
