@@ -227,6 +227,11 @@ module "litellm" {
   min_replicas = 1
   max_replicas = 10
 
+  # LiteLLM's cold start loads the rendered config + initialises the
+  # Langfuse callbacks; /health/liveliness returns 200 once the router
+  # is ready. Platform's default ~15s TCP probe was killing it at ~22s.
+  startup_probe_path = "/health/liveliness"
+
   tags = local.base_tags
 }
 
