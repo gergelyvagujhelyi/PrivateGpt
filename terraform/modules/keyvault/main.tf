@@ -97,6 +97,10 @@ resource "random_password" "litellm_master" {
   length  = 48
   special = false
 }
+resource "random_password" "webui_secret_key" {
+  length  = 64
+  special = false
+}
 
 resource "azurerm_key_vault_secret" "langfuse_nextauth_secret" {
   name         = "langfuse-nextauth-secret"
@@ -128,6 +132,16 @@ resource "azurerm_key_vault_secret" "litellm_master_key" {
   key_vault_id = azurerm_key_vault.this.id
   depends_on   = [azurerm_role_assignment.deployer_admin]
 }
+# OpenWebUI signs session cookies with this. Without a stable value the
+# container generates a fresh random one on each boot, so every redeploy
+# invalidates logged-in sessions and clients start getting 401s until they
+# re-auth (surfaces downstream as "JSON.parse" toasts on broken fetches).
+resource "azurerm_key_vault_secret" "webui_secret_key" {
+  name         = "webui-secret-key"
+  value        = random_password.webui_secret_key.result
+  key_vault_id = azurerm_key_vault.this.id
+  depends_on   = [azurerm_role_assignment.deployer_admin]
+}
 
 # Entra app registration secrets (placeholder — rotated outside of TF or via AAD app module)
 resource "azurerm_key_vault_secret" "entra_client_id" {
@@ -155,5 +169,6 @@ output "langfuse_salt_ref" { value = azurerm_key_vault_secret.langfuse_salt.vers
 output "langfuse_pk_ref" { value = azurerm_key_vault_secret.langfuse_pk.versionless_id }
 output "langfuse_sk_ref" { value = azurerm_key_vault_secret.langfuse_sk.versionless_id }
 output "litellm_master_key_ref" { value = azurerm_key_vault_secret.litellm_master_key.versionless_id }
+output "webui_secret_key_ref" { value = azurerm_key_vault_secret.webui_secret_key.versionless_id }
 output "entra_client_id_ref" { value = azurerm_key_vault_secret.entra_client_id.versionless_id }
 output "entra_client_secret_ref" { value = azurerm_key_vault_secret.entra_client_secret.versionless_id }

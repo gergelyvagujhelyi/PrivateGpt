@@ -262,6 +262,10 @@ module "openwebui" {
     # from env on first write.
     { name = "OPENAI_API_BASE_URLS", value = "https://${module.litellm.fqdn}/v1" },
     { name = "OPENAI_API_KEYS", secret_name = "litellm-master-key" },
+    # Stable session-cookie signing key. Without this OpenWebUI generates
+    # a random one per boot, so every redeploy logs everyone out and the
+    # stale cookie → 401 → frontend JSON.parse cascade hits.
+    { name = "WEBUI_SECRET_KEY", secret_name = "webui-secret-key" },
     # Route RAG embedding calls through LiteLLM too. Baseline engine is
     # set to "openai" in the image; these point it at our LiteLLM instead
     # of the hardcoded api.openai.com default.
@@ -289,6 +293,7 @@ module "openwebui" {
   secrets = {
     "openwebui-db-url"    = module.postgres.openwebui_db_url_secret_ref
     "litellm-master-key"  = module.keyvault.litellm_master_key_ref
+    "webui-secret-key"    = module.keyvault.webui_secret_key_ref
     "entra-client-id"     = module.keyvault.entra_client_id_ref
     "entra-client-secret" = module.keyvault.entra_client_secret_ref
   }
