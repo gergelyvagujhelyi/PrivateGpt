@@ -33,9 +33,29 @@ Since then the implementation has evolved:
 - **Digest summariser:** single prompt → **tool-calling Claude agent** (Langfuse-traced)
 - **RAG:** OpenWebUI's built-in → **custom ingestion pipeline** (Blob → chunk → embed → pgvector with HNSW)
 - **New:** TypeScript/React admin UI on a dedicated Front Door endpoint, Entra SSO, runtime config
+- **CI/CD:** ADO pipelines shipped + live-deployed; Managed DevOps Pools scaffolded for VNet-injected agents
+- **Cost guardrails:** budget + action group + Automation runbook killswitch for dev subs
 
 Current architecture diagram + details in the repo `README.md`. The rest
 of this deck is retained for the original reasoning and trade-offs.
+
+---
+
+<!-- _class: lead -->
+
+## Real-world deploy notes
+
+Lessons from bootstrapping the stack end-to-end (~30 iteration cycles
+of apply-fix-apply against real Azure):
+
+- **Paid sub required.** Trial subs block Postgres Flexible, Front Door Premium, and Claude MaaS — not fixable via quota request.
+- **Storage AAD data-plane.** `shared_access_key_enabled = false` means `storage_use_azuread = true` + explicit `Storage Blob/Queue Data` role grants on the SA.
+- **WIF → Terraform backend.** `az login` from `AzureCLI@2` ≠ authenticating the terraform azurerm backend. Map `$idToken` → `ARM_OIDC_TOKEN`.
+- **ADO parallelism is separately billed.** Upgrading the Azure sub doesn't grant hosted pipeline jobs. Buy, self-host, or wait for the free-grant form.
+- **Stale tfstate locks.** Cancelled pipeline runs leave locks. `az storage blob lease break` clears them in seconds.
+
+All six fixes shipped as PRs against `main` — see `README.md`'s "Deploy
+gotchas" section for the running list.
 
 ---
 

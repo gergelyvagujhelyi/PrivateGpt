@@ -58,12 +58,27 @@ Everything after the one-time prereqs fits in a single PR.
 
 ### One-time prereqs (per client, ~30 min)
 
-1. Create (or request) the client's Azure subscription.
-2. Create an ADO **service connection** with federated identity to that subscription.
-3. Create the ADO **variable group** `owui-<client>` and ADO **environments**
-   `owui-<client>-{dev,test,prod}` with approvers.
-4. Register an **Entra app** for OpenWebUI SSO; client-id + secret go into Key Vault after the first apply.
-5. If enabling the admin UI: register a **second Entra app** for the admin SPA + API (its client id goes into `entra_admin_app_client_id` in tfvars). After first apply, set the admin app's reply URL to the Terraform `admin_public_url` output.
+1. **Azure subscription** — must be **pay-as-you-go or higher**, not a trial/free sub. Trial subs cannot provision Postgres Flexible Server (`LocationIsOfferRestricted`), Front Door Premium, or Claude MaaS, which are all required by this stack. Upgrade via Portal → Subscriptions → Upgrade before running the pipeline.
+2. Create an ADO **service connection** (workload identity federation) named `sc-owui-<client>`. The service connection's SP needs:
+   - `Contributor` on the target subscription (to manage resources)
+   - `Storage Blob Data Contributor` on the tfstate storage account (to read/write state)
+3. Create the ADO **variable group** `owui-<client>` and the ADO **environments** `owui-<client>-{dev,test,prod}` with approvers.
+4. **ADO hosted parallelism** — Microsoft doesn't auto-grant free parallelism on new orgs. Either:
+   - Purchase 1 Microsoft-hosted parallel job (~$40/mo, cancelable) via ADO Org Settings → Billing, or
+   - Run pipelines on a self-hosted agent (see the `pool` blocks in `.azuredevops/pipelines/*.yml`), or
+   - Fill https://aka.ms/azpipelines-parallelism-request and wait 2–3 business days for the free grant
+5. Register an **Entra app** for OpenWebUI SSO; client-id + secret go into Key Vault after the first apply.
+6. If enabling the admin UI: register a **second Entra app** for the admin SPA + API (its client id goes into `entra_admin_app_client_id` in tfvars). After first apply, set the admin app's reply URL to the Terraform `admin_public_url` output.
+
+### Platform bootstrap (once per platform tenant)
+
+If this is the very first client on a fresh platform, provision the shared:
+
+- `rg-owui-platform` resource group
+- tfstate storage account (blob container `tfstate`, AAD auth only)
+- Shared ACR (Basic or Premium)
+
+The `backend.hcl` files under `terraform/envs/<client>/` must point at the real platform storage account — they're templates, edit the first time.
 
 ### The PR
 
@@ -75,8 +90,7 @@ git add terraform/envs/<client>/ && git commit -m "onboard: <client>"
 git push -u origin onboard/<client>
 ```
 
-Open the PR. The infra pipeline runs `plan` for each env and posts it as a
-PR comment. On merge: apply to dev → test → prod with approval gates.
+Open the PR. The infra pipeline plans `dev` and posts it as a PR comment. On merge it applies to `dev` automatically. `test` and `prod` are opt-in via the pipeline's `include_test` / `include_prod` parameters — tick the boxes in the "Run pipeline" dialog when you're ready to promote.
 
 ## Optional features
 
@@ -283,6 +297,56 @@ Grant the relevant ADO project permission to use it and flip the
 - Per-user / per-group token quotas enforced in LiteLLM.
 - Container Apps scale-to-zero on non-prod.
 - One shared ACR across clients (no per-client registry cost).
+
+### Budget killswitch (recommended for demo / dev subs)
+
+Soft hard-stop on runaway spend: an Azure Consumption Budget whose
+100%-forecasted alert fires an Action Group that triggers an Automation
+Account runbook. The runbook runs under a system-assigned Managed
+Identity with `Owner` on the subscription and deletes every
+`rg-owui-*` resource group except `rg-owui-platform` (so shared ACR +
+tfstate survive).
+
+Wire-up is currently platform-tenant specific and provisioned via
+Portal / `az` — not yet in a Terraform module. Follow-up issue to
+scaffold `modules/cost_killswitch/`. Caveats:
+- Budgets alert, they don't block provisioning
+- Azure billing data lags 8–24h, so worst-case overshoot at current
+  steady-state burn is ~one day of accrued spend before the killswitch
+  fires
+
+## Deploy gotchas (learned the hard way)
+
+Things that bit us when bootstrapping the first deploy. Documented so
+the next engineer doesn't burn a day each on these:
+
+1. **Storage data-plane auth** — `shared_access_key_enabled = false` on
+   the workload storage account means the azurerm provider can't read
+   blob/queue properties with storage keys. Solution: set
+   `storage_use_azuread = true` on the provider block and grant the
+   executing SP both `Storage Blob Data Owner` and
+   `Storage Queue Data Contributor` on the SA. Module does this
+   automatically; the provider flag is in `stacks/openwebui/versions.tf`.
+2. **Backend state SA name** — `backend.hcl` templates ship with
+   placeholder SA name `sttfstateplatform`. That name is globally
+   unique and belongs to someone else. Update to your platform's real
+   SA before first `terraform init` or you'll hit 401 auth errors.
+3. **WIF → Terraform backend** — the `AzureCLI@2` task's `az login`
+   doesn't automatically authenticate the terraform backend. Enable
+   `addSpnToEnvironment: true` on the task and map `$idToken`,
+   `$servicePrincipalId`, `$tenantId` to `ARM_OIDC_TOKEN`,
+   `ARM_CLIENT_ID`, `ARM_TENANT_ID` in the script. Already wired in
+   both pipeline YAMLs.
+4. **Stale tfstate locks** — pipeline cancellations leave locks on the
+   state blob. Clear with
+   `az storage blob lease break -n <path>.tfstate --account-name <sa> -c tfstate --auth-mode login`
+   or `terraform force-unlock <lock-id>` from any authenticated shell.
+5. **`terraform test` source resolution** — tests must live inside the
+   module being tested (`stacks/openwebui/tests/`), not alongside it.
+   Test files reference the current CWD implicitly; no `module {}` block.
+6. **ADO hosted parallelism grant** — see the prereq above. New orgs
+   need either to purchase, self-host, or fill the form. Upgrading the
+   Azure sub does **not** grant ADO parallelism — separate billing.
 
 ## References
 
