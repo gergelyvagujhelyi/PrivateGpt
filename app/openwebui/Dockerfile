@@ -2,6 +2,20 @@
 ARG OPENWEBUI_VERSION=v0.8.12
 FROM ghcr.io/open-webui/open-webui:${OPENWEBUI_VERSION}
 
+# Layer-upgrade Python deps the upstream image ships with known CVEs.
+# Revisit every upstream bump: upstream may catch up and this can shrink.
+USER root
+RUN pip install --no-cache-dir --upgrade \
+        'orjson>=3.11.6' \
+        'pillow>=12.2.0' \
+        'python-multipart>=0.0.22' \
+  && rm -rf /root/.cache/pip
+
+# Runtime is Python + the pre-built SvelteKit static bundle; npm itself
+# isn't needed. Its bundled node_modules tree is where the picomatch
+# HIGH (CVE-2026-33671) gets flagged. Remove idempotently.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx 2>/dev/null || true
+
 # Layer our config + branding assets on top of the upstream image.
 COPY branding/ /app/backend/static/branding/
 COPY config/openwebui.env /app/openwebui.env
