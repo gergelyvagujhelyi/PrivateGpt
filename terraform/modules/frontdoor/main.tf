@@ -182,7 +182,7 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "this" {
     dynamic "override" {
       for_each = var.allow_signup_avatar_xss ? [1] : []
       content {
-        rule_group_name = "REQUEST-941-APPLICATION-ATTACK-XSS"
+        rule_group_name = "XSS"
 
         exclusion {
           match_variable = "RequestBodyJsonArgNames"
