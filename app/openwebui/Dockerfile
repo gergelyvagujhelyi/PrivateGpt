@@ -1,5 +1,5 @@
 # Pinned upstream digest — bump via Renovate + CI test in dev
-ARG OPENWEBUI_VERSION=v0.6.5
+ARG OPENWEBUI_VERSION=v0.8.12
 FROM ghcr.io/open-webui/open-webui:${OPENWEBUI_VERSION}
 
 # Layer our config + branding assets on top of the upstream image.

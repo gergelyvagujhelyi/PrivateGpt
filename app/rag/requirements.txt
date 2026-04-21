@@ -1,6 +1,6 @@
 azure-identity==1.19.0
 azure-storage-blob==12.23.1
-langchain-text-splitters==0.3.2
+langchain-text-splitters==0.3.9
 langfuse==2.53.0
 openai==1.55.0
 pgvector==0.3.6
