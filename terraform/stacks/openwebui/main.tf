@@ -79,7 +79,7 @@ module "ai_foundry" {
 
   name_prefix                = local.name_prefix
   resource_group_name        = azurerm_resource_group.this.name
-  location                   = var.location
+  location                   = coalesce(var.foundry_location, var.location)
   private_endpoint_subnet_id = module.network.pe_subnet_id
   private_dns_zone_ids       = module.network.ai_services_private_dns_zone_ids
   blob_private_dns_zone_id   = module.network.blob_private_dns_zone_id

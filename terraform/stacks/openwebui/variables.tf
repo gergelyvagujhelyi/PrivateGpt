@@ -22,6 +22,12 @@ variable "location" {
   default     = "westeurope"
 }
 
+variable "foundry_location" {
+  type        = string
+  description = "Region for AI Foundry + AI Services. Defaults to var.location; override when interactive AOAI quota lives elsewhere."
+  default     = ""
+}
+
 variable "cost_center" {
   type        = string
   description = "Billing tag"

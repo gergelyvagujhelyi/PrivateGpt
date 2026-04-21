@@ -1,7 +1,8 @@
-client      = "kdemo"
-environment = "dev"
-location    = "westeurope"
-cost_center = "CC-KOMPOSE-DEMO"
+client           = "kdemo"
+environment      = "dev"
+location         = "westeurope"
+foundry_location = "swedencentral"
+cost_center      = "CC-KOMPOSE-DEMO"
 
 openwebui_image = "acroopenwebuishared.azurecr.io/openwebui:dev"
 litellm_image   = "acroopenwebuishared.azurecr.io/litellm:dev"
@@ -31,8 +32,8 @@ features = {
 }
 
 foundry_deployments = {
-  "gpt-35-turbo"           = { provider = "openai", model = "gpt-35-turbo", version = "0125", sku_name = "Standard", capacity = 50 }
-  "text-embedding-ada-002" = { provider = "openai", model = "text-embedding-ada-002", version = "2", sku_name = "Standard", capacity = 50 }
+  "gpt-4o-mini"            = { provider = "openai", model = "gpt-4o-mini", version = "2024-07-18", sku_name = "Standard", capacity = 50 }
+  "text-embedding-3-large" = { provider = "openai", model = "text-embedding-3-large", version = "1", sku_name = "Standard", capacity = 50 }
 }
 
 entra_group_admins_object_id = "00000000-0000-0000-0000-000000000000"
