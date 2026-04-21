@@ -21,9 +21,9 @@ parameters:
     default: kompose
     values: [kompose, acme, beta]
   - name: service_connection
-    displayName: ADO service connection (default follows client name)
+    displayName: ADO service connection (blank → sc-owui-<client>)
     type: string
-    default: sc-owui-acme
+    default: ''
   - name: include_test
     displayName: Also plan + apply test env
     type: boolean
