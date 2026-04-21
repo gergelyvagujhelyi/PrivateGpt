@@ -41,6 +41,8 @@ entra_group_admins_object_id = "00000000-0000-0000-0000-000000000000"
 
 allowed_ip_ranges = []
 
+waf_allow_signup_avatar = true
+
 tags = {
   owner = "platform-ai"
 }

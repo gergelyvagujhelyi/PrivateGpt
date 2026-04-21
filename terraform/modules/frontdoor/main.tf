@@ -22,6 +22,15 @@ variable "secondary_origins" {
 variable "origin_location" { type = string }
 variable "private_link_target_id" { type = string }
 
+# Per-client opt-in to exempt profile_image_url from the DRS XSS rule group.
+# Required for OpenWebUI's local signup flow (base64 avatar trips 941130/941170);
+# leave false for clients that sign in via OAuth only or whose compliance posture
+# forbids managed-rule exclusions.
+variable "allow_signup_avatar_xss" {
+  type    = bool
+  default = false
+}
+
 variable "log_analytics_id" { type = string }
 variable "tags" { type = map(string) }
 
@@ -164,6 +173,24 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "this" {
     type    = "Microsoft_DefaultRuleSet"
     version = "2.1"
     action  = "Block"
+
+    # OpenWebUI's signup POST includes a base64 data: URI avatar in
+    # `profile_image_url`, which DRS 2.1 XSS rules 941130/941170 score as an
+    # injection attempt (combined score ≥ 10 → 949110 blocks with 403).
+    # Per-client opt-in — scoped to the XSS rule group only so SQLi / RCE /
+    # LFI categories still evaluate the field.
+    dynamic "override" {
+      for_each = var.allow_signup_avatar_xss ? [1] : []
+      content {
+        rule_group_name = "REQUEST-941-APPLICATION-ATTACK-XSS"
+
+        exclusion {
+          match_variable = "RequestBodyJsonArgNames"
+          operator       = "Equals"
+          selector       = "profile_image_url"
+        }
+      }
+    }
   }
 
   managed_rule {
@@ -233,4 +260,12 @@ output "profile_id" { value = azurerm_cdn_frontdoor_profile.this.id }
 
 output "secondary_endpoints" {
   value = { for k, e in azurerm_cdn_frontdoor_endpoint.secondary : k => "https://${e.host_name}" }
+}
+
+# Test surface — exposed so tftest can assert the DRS override flips with the flag.
+output "drs_override_count" {
+  value = length([
+    for m in azurerm_cdn_frontdoor_firewall_policy.this.managed_rule :
+    m.override if m.type == "Microsoft_DefaultRuleSet"
+  ][0])
 }

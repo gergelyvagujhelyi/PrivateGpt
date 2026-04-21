@@ -262,14 +262,15 @@ locals {
 module "frontdoor" {
   source = "../../modules/frontdoor"
 
-  name_prefix            = local.name_prefix
-  resource_group_name    = azurerm_resource_group.this.name
-  origin_host_name       = local.openwebui_origin_host
-  origin_host_header     = local.openwebui_origin_host
-  origin_location        = var.location
-  private_link_target_id = module.container_app_env.id
-  allowed_ip_ranges      = var.allowed_ip_ranges
-  log_analytics_id       = module.observability.log_analytics_id
+  name_prefix             = local.name_prefix
+  resource_group_name     = azurerm_resource_group.this.name
+  origin_host_name        = local.openwebui_origin_host
+  origin_host_header      = local.openwebui_origin_host
+  origin_location         = var.location
+  private_link_target_id  = module.container_app_env.id
+  allowed_ip_ranges       = var.allowed_ip_ranges
+  allow_signup_avatar_xss = var.waf_allow_signup_avatar
+  log_analytics_id        = module.observability.log_analytics_id
 
   # Each enabled secondary feature that needs public reach gets its own Front Door endpoint.
   secondary_origins = merge(

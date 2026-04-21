@@ -96,6 +96,12 @@ variable "allowed_ip_ranges" {
   default     = []
 }
 
+variable "waf_allow_signup_avatar" {
+  type        = bool
+  description = "Exempt profile_image_url (OpenWebUI signup avatar) from the DRS XSS rule group (REQUEST-941). Set true only for clients that rely on OpenWebUI's local signup flow with the default base64 avatar; otherwise DRS 2.1 941130/941170 false-positive and WAF returns 403 on /api/v1/auths/signup."
+  default     = false
+}
+
 variable "digest_image" {
   type        = string
   description = "ACR image ref for the digest worker (only used when features.digest.enabled)"
