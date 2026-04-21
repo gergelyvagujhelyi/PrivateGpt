@@ -16,6 +16,12 @@ variable "secondary_origins" {
   default = {}
 }
 
+# Private Link target for all origins — the internal Container App Environment.
+# Front Door Premium reaches the CAE's private LB via a managed PE; each origin
+# creates one PE connection on the CAE that must be approved before traffic flows.
+variable "origin_location" { type = string }
+variable "private_link_target_id" { type = string }
+
 variable "log_analytics_id" { type = string }
 variable "tags" { type = map(string) }
 
@@ -44,7 +50,7 @@ resource "azurerm_cdn_frontdoor_origin_group" "this" {
 
   health_probe {
     path                = "/health"
-    request_type        = "HEAD"
+    request_type        = "GET"
     protocol            = "Https"
     interval_in_seconds = 60
   }
@@ -62,6 +68,13 @@ resource "azurerm_cdn_frontdoor_origin" "this" {
   priority                       = 1
   weight                         = 1000
   certificate_name_check_enabled = true
+
+  private_link {
+    request_message        = "FD -> CAE"
+    target_type            = "managedEnvironments"
+    location               = var.origin_location
+    private_link_target_id = var.private_link_target_id
+  }
 }
 
 resource "azurerm_cdn_frontdoor_route" "this" {
@@ -98,7 +111,7 @@ resource "azurerm_cdn_frontdoor_origin_group" "secondary" {
 
   health_probe {
     path                = "/health"
-    request_type        = "HEAD"
+    request_type        = "GET"
     protocol            = "Https"
     interval_in_seconds = 60
   }
@@ -117,6 +130,13 @@ resource "azurerm_cdn_frontdoor_origin" "secondary" {
   priority                       = 1
   weight                         = 1000
   certificate_name_check_enabled = true
+
+  private_link {
+    request_message        = "FD -> CAE"
+    target_type            = "managedEnvironments"
+    location               = var.origin_location
+    private_link_target_id = var.private_link_target_id
+  }
 }
 
 resource "azurerm_cdn_frontdoor_route" "secondary" {
