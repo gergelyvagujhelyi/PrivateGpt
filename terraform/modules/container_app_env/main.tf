@@ -26,6 +26,10 @@ resource "azurerm_container_app_environment" "this" {
   }
 
   tags = var.tags
+
+  lifecycle {
+    ignore_changes = [infrastructure_resource_group_name]
+  }
 }
 
 output "id" { value = azurerm_container_app_environment.this.id }
