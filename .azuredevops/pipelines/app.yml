@@ -157,7 +157,11 @@ stages:
                 docker push $(acrName).azurecr.io/$(image):dev
 
           - script: |
-              curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+              set -euo pipefail
+              # Install via brew — same pattern as checkov. Agent user has no
+              # write on /usr/local/bin, which is why the upstream install.sh
+              # path failed. Brew handles upgrades idempotently.
+              command -v trivy >/dev/null || brew install trivy
               trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed \
                 $(acrName).azurecr.io/$(image):$(sha)
             displayName: Trivy scan (fail on HIGH/CRITICAL)
