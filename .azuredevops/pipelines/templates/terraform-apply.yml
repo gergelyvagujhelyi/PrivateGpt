@@ -7,6 +7,9 @@ parameters:
     type: string
   - name: stackDir
     type: string
+  - name: service_connection
+    type: string
+    default: ''
 
 steps:
   - checkout: self
@@ -24,7 +27,7 @@ steps:
   - task: AzureCLI@2
     displayName: terraform apply (${{ parameters.envName }})
     inputs:
-      azureSubscription: sc-owui-${{ parameters.client }}
+      azureSubscription: ${{ coalesce(parameters.service_connection, format('sc-owui-{0}', parameters.client)) }}
       scriptType: bash
       scriptLocation: inlineScript
       addSpnToEnvironment: true

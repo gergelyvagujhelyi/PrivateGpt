@@ -18,8 +18,12 @@ pr:
 parameters:
   - name: client
     type: string
-    default: acme
-    values: [acme, beta]
+    default: kompose
+    values: [kompose, acme, beta]
+  - name: service_connection
+    displayName: ADO service connection (default follows client name)
+    type: string
+    default: sc-owui-acme
   - name: include_test
     displayName: Also plan + apply test env
     type: boolean
@@ -91,7 +95,7 @@ stages:
           - task: AzureCLI@2
             displayName: terraform plan ($(envName))
             inputs:
-              azureSubscription: sc-owui-${{ parameters.client }}
+              azureSubscription: ${{ coalesce(parameters.service_connection, format('sc-owui-{0}', parameters.client)) }}
               scriptType: bash
               scriptLocation: inlineScript
               addSpnToEnvironment: true
@@ -140,6 +144,7 @@ stages:
                     client: ${{ parameters.client }}
                     tfVersion: $(tfVersion)
                     stackDir: $(stackDir)
+                    service_connection: ${{ parameters.service_connection }}
 
   - ${{ if eq(parameters.include_test, true) }}:
     - stage: Apply_Test
@@ -159,6 +164,7 @@ stages:
                       client: ${{ parameters.client }}
                       tfVersion: $(tfVersion)
                       stackDir: $(stackDir)
+                      service_connection: ${{ parameters.service_connection }}
 
   - ${{ if eq(parameters.include_prod, true) }}:
     - stage: Apply_Prod
@@ -181,3 +187,4 @@ stages:
                       client: ${{ parameters.client }}
                       tfVersion: $(tfVersion)
                       stackDir: $(stackDir)
+                      service_connection: ${{ parameters.service_connection }}

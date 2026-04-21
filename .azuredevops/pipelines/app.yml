@@ -20,8 +20,8 @@ pr:
 parameters:
   - name: client
     type: string
-    default: acme
-    values: [acme, beta]
+    default: kompose
+    values: [kompose, acme, beta]
 
 variables:
   - group: owui-${{ parameters.client }}
