@@ -146,7 +146,11 @@ stages:
               inlineScript: |
                 set -euo pipefail
                 az acr login -n $(acrName)
+                # Agent is Apple Silicon (arm64). Container Apps require
+                # linux/amd64 images — build explicitly for that platform
+                # (QEMU emulates on the mac, so it's slower but correct).
                 docker build \
+                  --platform=linux/amd64 \
                   -f $(dockerfile) \
                   --label org.opencontainers.image.revision=$(sha) \
                   --label org.opencontainers.image.source=$(Build.Repository.Uri) \
