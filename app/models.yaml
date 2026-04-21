@@ -18,10 +18,26 @@ models:
     exposed_as: claude-haiku-4-5
     content_safety_policy: Microsoft.DefaultV2
 
+  - name: gpt-4o
+    provider: openai
+    version: "2024-11-20"
+    sku_name: GlobalStandard
+    capacity: 50
+    purpose: chat
+    exposed_as: gpt-4o
+
+  - name: gpt-4o-mini
+    provider: openai
+    version: "2024-07-18"
+    sku_name: GlobalStandard
+    capacity: 50
+    purpose: chat
+    exposed_as: gpt-4o-mini
+
   - name: text-embedding-3-large
     provider: openai
     version: "1"
-    sku_name: Standard
+    sku_name: GlobalStandard
     capacity: 50
     purpose: embedding
     exposed_as: text-embedding-3-large
