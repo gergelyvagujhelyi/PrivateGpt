@@ -13,10 +13,20 @@ locals {
   )
 }
 
+locals {
+  acr_login_server = data.azurerm_container_registry.shared.login_server
+  acr_id           = data.azurerm_container_registry.shared.id
+}
+
 resource "azurerm_resource_group" "this" {
   name     = "rg-${local.name_prefix}"
   location = var.location
   tags     = local.base_tags
+}
+
+data "azurerm_container_registry" "shared" {
+  name                = var.shared_acr_name
+  resource_group_name = var.shared_acr_resource_group
 }
 
 module "network" {
@@ -132,6 +142,8 @@ module "langfuse" {
   target_port          = 3000
   ingress_external     = false
   key_vault_id         = module.keyvault.id
+  acr_login_server     = local.acr_login_server
+  acr_id               = local.acr_id
 
   env = [
     { name = "DATABASE_URL", secret_name = "langfuse-db-url" },
@@ -167,6 +179,8 @@ module "litellm" {
   target_port          = 4000
   ingress_external     = false
   key_vault_id         = module.keyvault.id
+  acr_login_server     = local.acr_login_server
+  acr_id               = local.acr_id
 
   env = concat(
     [
@@ -215,6 +229,8 @@ module "openwebui" {
   # app addressable only app-to-app and the LB returns 404 to FD.
   ingress_external = true
   key_vault_id     = module.keyvault.id
+  acr_login_server = local.acr_login_server
+  acr_id           = local.acr_id
 
   env = [
     { name = "DATABASE_URL", secret_name = "openwebui-db-url" },
@@ -338,6 +354,8 @@ module "digest_daily" {
   container_app_env_id = module.container_app_env.id
   location             = var.location
   key_vault_id         = module.keyvault.id
+  acr_login_server     = local.acr_login_server
+  acr_id               = local.acr_id
   image                = var.digest_image
   cron_expression      = try(var.features.digest.daily_cron, "0 7 * * *")
 
@@ -357,6 +375,8 @@ module "digest_weekly" {
   container_app_env_id = module.container_app_env.id
   location             = var.location
   key_vault_id         = module.keyvault.id
+  acr_login_server     = local.acr_login_server
+  acr_id               = local.acr_id
   image                = var.digest_image
   cron_expression      = try(var.features.digest.weekly_cron, "0 7 * * MON")
 
@@ -382,6 +402,8 @@ module "rag_ingest" {
   container_app_env_id = module.container_app_env.id
   location             = var.location
   key_vault_id         = module.keyvault.id
+  acr_login_server     = local.acr_login_server
+  acr_id               = local.acr_id
   image                = var.rag_image
   cron_expression      = try(var.features.rag.ingest_cron, "*/15 * * * *")
 
@@ -433,6 +455,8 @@ module "admin" {
   # Front Door to reach via Private Link.
   ingress_external = true
   key_vault_id     = module.keyvault.id
+  acr_login_server = local.acr_login_server
+  acr_id           = local.acr_id
 
   env = [
     { name = "DATABASE_URL", secret_name = "openwebui-db-url" },

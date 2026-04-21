@@ -102,6 +102,18 @@ variable "waf_allow_signup_avatar" {
   default     = false
 }
 
+variable "shared_acr_name" {
+  type        = string
+  description = "Name of the shared ACR that carries per-client app images. Container apps that reference <shared_acr_name>.azurecr.io/* images get AcrPull + UAMI-based registry auth wired automatically."
+  default     = "acrowui18819"
+}
+
+variable "shared_acr_resource_group" {
+  type        = string
+  description = "Resource group containing the shared ACR (in the platform subscription)."
+  default     = "rg-owui-platform"
+}
+
 variable "digest_image" {
   type        = string
   description = "ACR image ref for the digest worker (only used when features.digest.enabled)"

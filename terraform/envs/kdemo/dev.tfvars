@@ -5,7 +5,7 @@ foundry_location = "swedencentral"
 cost_center      = "CC-KOMPOSE-DEMO"
 
 openwebui_image = "ghcr.io/open-webui/open-webui:main"
-litellm_image   = "ghcr.io/berriai/litellm:main-stable"
+litellm_image   = "acrowui18819.azurecr.io/litellm:dev"
 langfuse_image  = "langfuse/langfuse:2"
 digest_image    = "mcr.microsoft.com/azuredocs/aci-helloworld:latest"
 rag_image       = "mcr.microsoft.com/azuredocs/aci-helloworld:latest"

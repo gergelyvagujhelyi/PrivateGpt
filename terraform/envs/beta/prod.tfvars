@@ -3,8 +3,8 @@ environment = "prod"
 location    = "westeurope"
 cost_center = "CC-BETA-AI"
 
-openwebui_image = "acroopenwebuishared.azurecr.io/openwebui:stable"
-litellm_image   = "acroopenwebuishared.azurecr.io/litellm:stable"
+openwebui_image = "acrowui18819.azurecr.io/openwebui:stable"
+litellm_image   = "acrowui18819.azurecr.io/litellm:stable"
 langfuse_image  = "langfuse/langfuse:2"
 
 features = {}
