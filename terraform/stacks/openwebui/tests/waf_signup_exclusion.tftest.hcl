@@ -30,8 +30,8 @@ run "waf_signup_avatar_disabled_by_default" {
   command = plan
 
   assert {
-    condition     = module.frontdoor.drs_override_count == 0
-    error_message = "DRS override must not be declared when waf_allow_signup_avatar defaults to false"
+    condition     = module.frontdoor.signup_avatar_override_count == 0
+    error_message = "profile_image_url exclusion must not be declared when waf_allow_signup_avatar defaults to false"
   }
 }
 
@@ -43,7 +43,7 @@ run "waf_signup_avatar_opt_in_adds_override" {
   }
 
   assert {
-    condition     = module.frontdoor.drs_override_count == 1
-    error_message = "DRS override must be declared when waf_allow_signup_avatar = true"
+    condition     = module.frontdoor.signup_avatar_override_count == 1
+    error_message = "profile_image_url exclusion must be declared when waf_allow_signup_avatar = true"
   }
 }
