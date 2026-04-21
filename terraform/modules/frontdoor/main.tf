@@ -191,6 +191,31 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "this" {
         }
       }
     }
+
+    # OpenWebUI's chat payloads contain prompt-template placeholders like
+    # `{{USER_NAME}}` (AngularJS-style double braces) and a `session_id`
+    # field. DRS 2.1 rule 941380 scores `{{...}}` as AngularJS client-side
+    # template injection and 943120 flags `session_id` JSON keys with no
+    # Referer as session fixation — combined they push POSTs to
+    # /api/chat/completions past the blocking threshold. Both are
+    # categorical false positives for this app; disable the two rules
+    # while leaving every other XSS / FIX check active.
+    override {
+      rule_group_name = "XSS"
+      rule {
+        rule_id = "941380"
+        action  = "Log"
+        enabled = false
+      }
+    }
+    override {
+      rule_group_name = "FIX"
+      rule {
+        rule_id = "943120"
+        action  = "Log"
+        enabled = false
+      }
+    }
   }
 
   managed_rule {
