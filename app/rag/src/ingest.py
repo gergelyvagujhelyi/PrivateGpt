@@ -84,13 +84,13 @@ def run() -> int:
                 )
                 rows = (
                     (i, text_chunk, vec, {"source": blob.name})
-                    for i, (text_chunk, vec) in enumerate(zip(chunks, vectors))
+                    for i, (text_chunk, vec) in enumerate(zip(chunks, vectors, strict=False))
                 )
                 n = write_chunks(conn, source_id, namespace, rows)
                 conn.commit()
                 bound.info("ingested", chunks=n, namespace=namespace)
                 ingested += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 conn.rollback()
                 bound.exception("ingest_failed", error=str(exc))
                 errored += 1

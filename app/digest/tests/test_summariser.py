@@ -3,7 +3,7 @@ so legacy call sites keep working. Agent internals are tested in test_agent.py."
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,7 +15,7 @@ def test_shim_delegates_to_agent(monkeypatch: pytest.MonkeyPatch):
     called = MagicMock(return_value="- recap bullet")
     monkeypatch.setattr(summariser, "_agent_summarise", called)
 
-    out = summariser.summarise("u1", datetime(2026, 4, 14, tzinfo=timezone.utc))
+    out = summariser.summarise("u1", datetime(2026, 4, 14, tzinfo=UTC))
 
     assert out == "- recap bullet"
     called.assert_called_once()

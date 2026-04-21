@@ -59,7 +59,11 @@ stages:
                           -r app/digest/requirements-dev.txt \
                           -r app/rag/requirements-dev.txt
               ruff check scripts/ app/digest/ app/rag/
-              mypy scripts/ app/digest/src app/rag/src --ignore-missing-imports
+              # --explicit-package-bases — app/digest/src and app/rag/src are
+              # both named "src"; without this, mypy treats them as the same
+              # module and errors out.
+              mypy scripts/ app/digest/src app/rag/src \
+                --explicit-package-bases --ignore-missing-imports
             displayName: Python lint + types
 
           - task: NodeTool@0
