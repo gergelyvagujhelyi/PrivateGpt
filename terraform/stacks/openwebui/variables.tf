@@ -28,6 +28,12 @@ variable "foundry_location" {
   default     = ""
 }
 
+variable "foundry_private_endpoints_enabled" {
+  type        = bool
+  description = "Whether to create private endpoints for AI Services + hub storage. Must be false when foundry_location differs from the VNet region (cross-region PE is rejected for these resource types)."
+  default     = true
+}
+
 variable "cost_center" {
   type        = string
   description = "Billing tag"

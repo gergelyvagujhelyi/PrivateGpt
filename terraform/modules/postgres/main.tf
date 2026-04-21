@@ -70,6 +70,18 @@ resource "azurerm_key_vault_secret" "admin_password" {
   key_vault_id = var.key_vault_id
 }
 
+resource "azurerm_key_vault_secret" "openwebui_db_url" {
+  name         = "openwebui-db-url"
+  value        = "postgresql://${local.user}:${local.pw}@${local.host}:5432/openwebui?sslmode=require"
+  key_vault_id = var.key_vault_id
+}
+
+resource "azurerm_key_vault_secret" "langfuse_db_url" {
+  name         = "langfuse-db-url"
+  value        = "postgresql://${local.user}:${local.pw}@${local.host}:5432/langfuse?sslmode=require"
+  key_vault_id = var.key_vault_id
+}
+
 resource "azurerm_monitor_diagnostic_setting" "this" {
   name                       = "diag"
   target_resource_id         = azurerm_postgresql_flexible_server.this.id
@@ -94,3 +106,5 @@ output "langfuse_connection_string" {
   value     = "postgresql://${local.user}:${local.pw}@${local.host}:5432/langfuse?sslmode=require"
   sensitive = true
 }
+output "openwebui_db_url_secret_ref" { value = azurerm_key_vault_secret.openwebui_db_url.versionless_id }
+output "langfuse_db_url_secret_ref" { value = azurerm_key_vault_secret.langfuse_db_url.versionless_id }
