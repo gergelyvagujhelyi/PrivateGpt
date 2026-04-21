@@ -8,6 +8,13 @@ from pgvector.psycopg import register_vector
 
 def connect(database_url: str) -> psycopg.Connection:
     conn = psycopg.connect(database_url)
+    # register_vector requires the `vector` type to exist. Migrations create
+    # the extension, but the store's connect() may be called against a fresh
+    # DB before migrations ran (first-time tests, integration bootstraps).
+    # Ensure the extension is present before the type registration.
+    with conn.cursor() as cur:
+        cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    conn.commit()
     register_vector(conn)
     return conn
 

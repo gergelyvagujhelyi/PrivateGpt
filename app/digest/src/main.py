@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import sys
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import psycopg
 import structlog
@@ -27,8 +28,10 @@ from .unsub import sign_token
 
 log = structlog.get_logger()
 
+# Templates live at app/digest/templates; resolve relative to this module so
+# tests run from repo root (or any cwd) still find them.
 tmpl_env = Environment(
-    loader=FileSystemLoader("templates"),
+    loader=FileSystemLoader(Path(__file__).resolve().parent.parent / "templates"),
     autoescape=select_autoescape(["html", "xml"]),
 )
 
