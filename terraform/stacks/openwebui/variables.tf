@@ -55,6 +55,12 @@ variable "langfuse_image" {
   default     = "langfuse/langfuse:2"
 }
 
+variable "task_model" {
+  type        = string
+  description = "Model OpenWebUI uses for title/tag generation and other small tasks. Must be one of foundry_deployments."
+  default     = "claude-haiku-4-5"
+}
+
 variable "foundry_deployments" {
   description = "Model deployments on Azure AI Foundry. provider = openai | anthropic"
   type = map(object({

@@ -262,6 +262,14 @@ module "openwebui" {
     # from env on first write.
     { name = "OPENAI_API_BASE_URLS", value = "https://${module.litellm.fqdn}/v1" },
     { name = "OPENAI_API_KEYS", secret_name = "litellm-master-key" },
+    # Route RAG embedding calls through LiteLLM too. Baseline engine is
+    # set to "openai" in the image; these point it at our LiteLLM instead
+    # of the hardcoded api.openai.com default.
+    { name = "RAG_OPENAI_API_BASE_URL", value = "https://${module.litellm.fqdn}/v1" },
+    { name = "RAG_OPENAI_API_KEY", secret_name = "litellm-master-key" },
+    # Override the Dockerfile default so each client points TASK_MODEL at
+    # a model it actually has deployed (kdemo has no Claude).
+    { name = "TASK_MODEL", value = var.task_model },
     # LiteLLM is the only upstream — Ollama probes would fail and surface
     # "Failed to fetch models" on the admin Models page.
     { name = "ENABLE_OLLAMA_API", value = "false" },

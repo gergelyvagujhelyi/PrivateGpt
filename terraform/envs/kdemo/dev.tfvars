@@ -37,6 +37,8 @@ foundry_deployments = {
   "text-embedding-3-large" = { provider = "openai", model = "text-embedding-3-large", version = "1", sku_name = "Standard", capacity = 50 }
 }
 
+task_model = "gpt-4o"
+
 entra_group_admins_object_id = "00000000-0000-0000-0000-000000000000"
 
 allowed_ip_ranges = []
