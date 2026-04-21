@@ -210,8 +210,11 @@ module "openwebui" {
   location             = var.location
   image                = var.openwebui_image
   target_port          = 8080
-  ingress_external     = false
-  key_vault_id         = module.keyvault.id
+  # Internal CAE + external=true publishes the app on the CAE's private LB so
+  # Front Door can reach it via Private Link. external=false would leave the
+  # app addressable only app-to-app and the LB returns 404 to FD.
+  ingress_external = true
+  key_vault_id     = module.keyvault.id
 
   env = [
     { name = "DATABASE_URL", secret_name = "openwebui-db-url" },
@@ -409,8 +412,10 @@ module "admin" {
   location             = var.location
   image                = var.admin_image
   target_port          = 4000
-  ingress_external     = false
-  key_vault_id         = module.keyvault.id
+  # See openwebui comment — external=true puts the app on the private LB for
+  # Front Door to reach via Private Link.
+  ingress_external = true
+  key_vault_id     = module.keyvault.id
 
   env = [
     { name = "DATABASE_URL", secret_name = "openwebui-db-url" },
