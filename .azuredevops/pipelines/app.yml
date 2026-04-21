@@ -22,6 +22,10 @@ parameters:
     type: string
     default: kompose
     values: [kdemo, kompose, acme, beta]
+  - name: service_connection
+    displayName: ADO service connection (blank → sc-owui-<client>)
+    type: string
+    default: ''
 
 variables:
   - group: owui-${{ parameters.client }}
@@ -85,7 +89,7 @@ stages:
           - task: AzureCLI@2
             displayName: Validate models.yaml
             inputs:
-              azureSubscription: sc-owui-${{ parameters.client }}
+              azureSubscription: ${{ coalesce(parameters.service_connection, format('sc-owui-{0}', parameters.client)) }}
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
@@ -120,7 +124,7 @@ stages:
           - task: AzureCLI@2
             displayName: Build + push $(image) to ACR
             inputs:
-              azureSubscription: sc-owui-${{ parameters.client }}
+              azureSubscription: ${{ coalesce(parameters.service_connection, format('sc-owui-{0}', parameters.client)) }}
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
@@ -159,6 +163,7 @@ stages:
                     client: ${{ parameters.client }}
                     sha: $(sha)
                     acrName: $(acrName)
+                    service_connection: ${{ parameters.service_connection }}
 
   - stage: Eval
     dependsOn: Deploy_Dev
@@ -201,3 +206,4 @@ stages:
                     sha: $(sha)
                     acrName: $(acrName)
                     canary: true
+                    service_connection: ${{ parameters.service_connection }}
