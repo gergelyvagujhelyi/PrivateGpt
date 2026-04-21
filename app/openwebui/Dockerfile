@@ -1,5 +1,5 @@
 # Pinned upstream digest — bump via Renovate + CI test in dev
-ARG OPENWEBUI_VERSION=v0.8.12
+ARG OPENWEBUI_VERSION=v0.9.1
 FROM ghcr.io/open-webui/open-webui:${OPENWEBUI_VERSION}
 
 # Layer security patches on top of the Debian-12 upstream image.
