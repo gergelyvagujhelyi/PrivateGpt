@@ -26,6 +26,14 @@ parameters:
     displayName: ADO service connection (blank → sc-owui-<client>)
     type: string
     default: ''
+  - name: include_eval
+    displayName: Also run Langfuse eval suite against dev
+    type: boolean
+    default: false
+  - name: include_prod
+    displayName: Also deploy to prod (canary, requires prod infra + env)
+    type: boolean
+    default: false
 
 variables:
   - group: owui-${{ parameters.client }}
@@ -165,45 +173,50 @@ stages:
                     acrName: $(acrName)
                     service_connection: ${{ parameters.service_connection }}
 
-  - stage: Eval
-    dependsOn: Deploy_Dev
-    jobs:
-      - job: langfuse_eval
-        pool:
-          name: Default
-        steps:
-          - checkout: self
-          - task: UsePythonVersion@0
-            inputs: { versionSpec: '3.12' }
-          - script: |
-              pip install -r tests/eval/requirements.txt
-              python -m pytest tests/eval -q --junitxml=eval-results.xml
-            env:
-              LANGFUSE_HOST: $(LANGFUSE_HOST_DEV)
-              LANGFUSE_PUBLIC_KEY: $(LANGFUSE_PUBLIC_KEY_DEV)
-              LANGFUSE_SECRET_KEY: $(LANGFUSE_SECRET_KEY_DEV)
-              OPENAI_BASE_URL: $(LITELLM_URL_DEV)
-              OPENAI_API_KEY: $(LITELLM_MASTER_KEY_DEV)
-            displayName: Run LLM eval suite
-          - task: PublishTestResults@2
-            inputs: { testResultsFiles: eval-results.xml }
+  - ${{ if eq(parameters.include_eval, true) }}:
+    - stage: Eval
+      dependsOn: Deploy_Dev
+      jobs:
+        - job: langfuse_eval
+          pool:
+            name: Default
+          steps:
+            - checkout: self
+            - task: UsePythonVersion@0
+              inputs: { versionSpec: '3.12' }
+            - script: |
+                pip install -r tests/eval/requirements.txt
+                python -m pytest tests/eval -q --junitxml=eval-results.xml
+              env:
+                LANGFUSE_HOST: $(LANGFUSE_HOST_DEV)
+                LANGFUSE_PUBLIC_KEY: $(LANGFUSE_PUBLIC_KEY_DEV)
+                LANGFUSE_SECRET_KEY: $(LANGFUSE_SECRET_KEY_DEV)
+                OPENAI_BASE_URL: $(LITELLM_URL_DEV)
+                OPENAI_API_KEY: $(LITELLM_MASTER_KEY_DEV)
+              displayName: Run LLM eval suite
+            - task: PublishTestResults@2
+              inputs: { testResultsFiles: eval-results.xml }
 
-  - stage: Deploy_Prod
-    dependsOn: Eval
-    jobs:
-      - deployment: deploy_prod
-        environment: owui-${{ parameters.client }}-prod
-        pool:
-          name: Default
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - template: templates/container-app-deploy.yml
-                  parameters:
-                    envName: prod
-                    client: ${{ parameters.client }}
-                    sha: $(sha)
-                    acrName: $(acrName)
-                    canary: true
-                    service_connection: ${{ parameters.service_connection }}
+  - ${{ if eq(parameters.include_prod, true) }}:
+    - stage: Deploy_Prod
+      dependsOn:
+        - Deploy_Dev
+        - ${{ if eq(parameters.include_eval, true) }}:
+          - Eval
+      jobs:
+        - deployment: deploy_prod
+          environment: owui-${{ parameters.client }}-prod
+          pool:
+            name: Default
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                  - template: templates/container-app-deploy.yml
+                    parameters:
+                      envName: prod
+                      client: ${{ parameters.client }}
+                      sha: $(sha)
+                      acrName: $(acrName)
+                      canary: true
+                      service_connection: ${{ parameters.service_connection }}
