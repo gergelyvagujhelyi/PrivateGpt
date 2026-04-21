@@ -234,8 +234,13 @@ module "openwebui" {
 
   env = [
     { name = "DATABASE_URL", secret_name = "openwebui-db-url" },
-    { name = "OPENAI_API_BASE_URL", value = "https://${module.litellm.fqdn}/v1" },
-    { name = "OPENAI_API_KEY", secret_name = "litellm-master-key" },
+    # Plural form is required: in v0.9.1 the singular OPENAI_API_BASE_URL /
+    # OPENAI_API_KEY get overwritten by a hardcoded api.openai.com default on
+    # boot, which leaves the admin Models page empty
+    # (open-webui/open-webui#19683). Plural takes precedence and is only read
+    # from env on first write.
+    { name = "OPENAI_API_BASE_URLS", value = "https://${module.litellm.fqdn}/v1" },
+    { name = "OPENAI_API_KEYS", secret_name = "litellm-master-key" },
     # LiteLLM is the only upstream — Ollama probes would fail and surface
     # "Failed to fetch models" on the admin Models page.
     { name = "ENABLE_OLLAMA_API", value = "false" },
