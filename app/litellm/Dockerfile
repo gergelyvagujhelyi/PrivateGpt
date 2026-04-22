@@ -31,5 +31,7 @@ RUN chmod +x /entrypoint.sh
 ENV PORT=4000
 
 EXPOSE 4000
+
+USER 1001
 ENTRYPOINT ["/entrypoint.sh"]
 CMD []
