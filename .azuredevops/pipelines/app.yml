@@ -104,9 +104,10 @@ stages:
           - script: |
               set -euo pipefail
               command -v trivy >/dev/null || brew install trivy
-              trivy fs --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed \
-                --scanners vuln,misconfig,secret \
-                app/ scripts/ .azuredevops/
+              for target in app scripts .azuredevops; do
+                trivy fs --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed \
+                  --scanners vuln,misconfig,secret "$target"
+              done
             displayName: Trivy fs scan (PR-safe)
 
           - task: AzureCLI@2
