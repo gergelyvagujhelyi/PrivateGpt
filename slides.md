@@ -197,6 +197,32 @@ terraform/
 
 ---
 
+## 9 · Future possibilities
+
+Optionality — the stack is architected to absorb each of these without redesign. Not on the roadmap, called out as extension points.
+
+**Cost governance in CI**
+- **Infracost** in `infra.yml` → per-PR monthly-cost delta as a PR comment, alongside the existing `plan` output. Cost visible *before* merge, not after the bill.
+- Budget policy as code — Azure Policy blocks SKUs above a threshold without explicit override.
+
+**Workflow / automation layer**
+- **n8n** as a Container App inside the VNet — low-code flow builder, calls LiteLLM for LLM steps, Langfuse for traces.
+- Non-devs compose agents ("inbox → summarise → post to Teams") without writing Python. Same Entra SSO, same cost seam, same observability as the chatbot.
+- Directly answers *"foundation for the client's AI initiatives"* — the chatbot is v1, the workflow plane is v2.
+
+**Capability growth**
+- **RAG-as-tool** — wire the custom retrieval path into OpenWebUI as a callable tool so chat grounds on the corpus automatically (today it's CLI + agent-importable).
+- **MCP servers** — one tool catalogue for every agent (OpenWebUI, digest, n8n, future).
+- **Azure AI Search** — one-module swap when retrieval quality or corpus size outgrows pgvector.
+
+**Reliability & reach**
+- Multi-region active-passive (Front Door cross-region failover, Postgres GeoBackup, Blob GRS).
+- Teams / Slack channel adapters on OpenWebUI's API for users who won't leave their chat tool.
+
+Every item reuses existing seams — LiteLLM, Langfuse, the per-client stack, the two pipelines. Additive modules, not rebuilds.
+
+---
+
 <!-- _class: lead -->
 
 # Thank you
