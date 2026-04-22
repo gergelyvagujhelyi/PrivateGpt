@@ -154,7 +154,7 @@ terraform/
 - **Content Safety** on prompts + responses; prompt-injection guardrails enforced by Langfuse evals in CI.
 - **Audit**: diagnostic settings → Log Analytics → optional SIEM export per client.
 - **Data residency**: region pinned per client; CMK on Storage + Postgres when required.
-- **Supply chain**: pinned upstream image digest (OpenWebUI `v0.9.1`), Trivy HIGH/CRITICAL gate on every build, SBOM attached, signed commits.
+- **Supply chain**: pinned upstream image digest (OpenWebUI `v0.9.1`), Trivy HIGH/CRITICAL gate on every build *plus* a pre-merge `trivy fs` scan over `app/`, `scripts/`, `.azuredevops/` (vuln + misconfig + secret), non-root containers across the board, SBOM attached, signed commits.
 
 ---
 

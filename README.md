@@ -146,6 +146,11 @@ DOCX, MD, TXT), chunks (`RecursiveCharacterTextSplitter`), embeds with
 writes to `rag_chunks` in the same Postgres with an HNSW index on
 `vector_cosine_ops`. Idempotent via ETag tracking in `rag_sources`.
 
+Source blobs are capped at `MAX_INPUT_BYTES = 50 MB`; extracted text is
+truncated to `MAX_OUTPUT_CHARS = 5 M` characters. Oversized inputs are
+skipped and logged rather than parsed — protects the job from
+decompression bombs and keeps memory bounded for the 1 Gi container.
+
 Retrieval is exposed both as a CLI (`python -m src.retrieve "<query>"`)
 and directly importable as a tool that agents can call.
 
@@ -301,7 +306,8 @@ Grant the relevant ADO project permission to use it and flip the
 - **WAF in Prevention mode** on Front Door (DRS 2.1 + Bot Manager 1.1), shared across the OpenWebUI and admin-UI endpoints. Two rule-level exceptions are always applied and one is per-client opt-in — see *Operational notes* below.
 - Customer-managed keys and geo-redundancy available as feature flags.
 - Content Safety on prompts and responses via LiteLLM; golden-prompt evals block prod on regression.
-- Every image passes a Trivy `HIGH,CRITICAL --ignore-unfixed` gate in `app.yml`; vendored `npm` / `site-packages` trees that aren't needed at runtime are stripped to keep the bar zero.
+- Every image passes a Trivy `HIGH,CRITICAL --ignore-unfixed` gate in `app.yml`; vendored `npm` / `site-packages` trees that aren't needed at runtime are stripped to keep the bar zero. The same gate also runs as a `trivy fs` pass over `app/`, `scripts/`, and `.azuredevops/` in the Validate stage on every PR, so vuln/misconfig/secret findings surface before merge.
+- Every container image runs as a non-root user — the four first-party images always have had dedicated UIDs; the two layered-on-upstream images (OpenWebUI, LiteLLM) end with an explicit `USER` directive (`owui` uid 1000, and upstream's `1001`) so the runtime process isn't `root`.
 
 ## Operational notes
 
