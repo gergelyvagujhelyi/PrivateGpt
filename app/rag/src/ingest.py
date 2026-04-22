@@ -18,7 +18,7 @@ from azure.storage.blob import BlobServiceClient
 
 from .chunk import chunk
 from .embed import embed_batch
-from .extract import UnsupportedFormat, extract_text
+from .extract import InputTooLarge, UnsupportedFormat, extract_text
 from .migrations import ensure_schema
 from .store import connect, is_already_ingested, upsert_source, write_chunks
 
@@ -64,6 +64,10 @@ def run() -> int:
                     text = extract_text(blob.name, blob.content_settings.content_type or "", data)
                 except UnsupportedFormat as exc:
                     bound.warning("skip_unsupported", error=str(exc))
+                    skipped += 1
+                    continue
+                except InputTooLarge as exc:
+                    bound.warning("skip_oversized", error=str(exc))
                     skipped += 1
                     continue
 
