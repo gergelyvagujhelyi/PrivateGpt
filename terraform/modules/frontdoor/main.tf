@@ -174,17 +174,30 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "this" {
     version = "2.1"
     action  = "Block"
 
-    # OpenWebUI's signup POST includes a base64 data: URI avatar in
-    # `profile_image_url`, which DRS 2.1 XSS rules 941130/941170 score as an
-    # injection attempt (combined score ≥ 10 → 949110 blocks with 403).
-    # Per-client opt-in — scoped to the XSS rule group only so SQLi / RCE /
-    # LFI categories still evaluate the field.
-    dynamic "override" {
-      for_each = var.allow_signup_avatar_xss ? [1] : []
-      content {
-        rule_group_name = "XSS"
+    # Azure rejects duplicate override blocks for the same rule_group_name
+    # ("Managed rule set contains duplicate group overrides"), so all XSS
+    # tweaks live in one block.
+    #
+    # Rule 941380 scores `{{USER_NAME}}` placeholders in OpenWebUI chat
+    # payloads as AngularJS client-side template injection — categorical
+    # false positive, always disabled.
+    #
+    # The exclusion is per-client opt-in: OpenWebUI's signup POST carries
+    # a base64 data: URI in profile_image_url, which XSS rules 941130/
+    # 941170 score as injection (combined ≥ 10 → 949110 blocks with 403).
+    # Scoped to XSS only so SQLi / RCE / LFI keep evaluating the field.
+    override {
+      rule_group_name = "XSS"
 
-        exclusion {
+      rule {
+        rule_id = "941380"
+        action  = "Log"
+        enabled = false
+      }
+
+      dynamic "exclusion" {
+        for_each = var.allow_signup_avatar_xss ? [1] : []
+        content {
           match_variable = "RequestBodyJsonArgNames"
           operator       = "Equals"
           selector       = "profile_image_url"
@@ -192,22 +205,8 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "this" {
       }
     }
 
-    # OpenWebUI's chat payloads contain prompt-template placeholders like
-    # `{{USER_NAME}}` (AngularJS-style double braces) and a `session_id`
-    # field. DRS 2.1 rule 941380 scores `{{...}}` as AngularJS client-side
-    # template injection and 943120 flags `session_id` JSON keys with no
-    # Referer as session fixation — combined they push POSTs to
-    # /api/chat/completions past the blocking threshold. Both are
-    # categorical false positives for this app; disable the two rules
-    # while leaving every other XSS / FIX check active.
-    override {
-      rule_group_name = "XSS"
-      rule {
-        rule_id = "941380"
-        action  = "Log"
-        enabled = false
-      }
-    }
+    # Rule 943120 flags `session_id` JSON keys with no Referer as session
+    # fixation — always the case for OpenWebUI's SPA fetch calls.
     override {
       rule_group_name = "FIX"
       rule {
