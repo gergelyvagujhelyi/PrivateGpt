@@ -33,10 +33,6 @@ resource "azurerm_key_vault" "this" {
   }
 
   tags = var.tags
-
-  lifecycle {
-    ignore_changes = [public_network_access_enabled, network_acls]
-  }
 }
 
 resource "azurerm_role_assignment" "deployer_admin" {
