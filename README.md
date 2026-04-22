@@ -144,7 +144,10 @@ A second Container Apps Job runs on cron, lists blobs under
 DOCX, MD, TXT), chunks (`RecursiveCharacterTextSplitter`), embeds with
 `text-embedding-3-large` through LiteLLM (traced in Langfuse), and
 writes to `rag_chunks` in the same Postgres with an HNSW index on
-`vector_cosine_ops`. Idempotent via ETag tracking in `rag_sources`.
+`halfvec_cosine_ops` (embeddings are stored as `HALFVEC(3072)` — pgvector's
+HNSW caps `vector` at 2000 dims, so `halfvec` is the canonical workaround
+for `text-embedding-3-large`'s 3072). Idempotent via ETag tracking in
+`rag_sources`.
 
 Source blobs are capped at `MAX_INPUT_BYTES = 50 MB`; extracted text is
 truncated to `MAX_OUTPUT_CHARS = 5 M` characters. Oversized inputs are
@@ -307,7 +310,7 @@ Grant the relevant ADO project permission to use it and flip the
 - Customer-managed keys and geo-redundancy available as feature flags.
 - Content Safety on prompts and responses via LiteLLM; golden-prompt evals block prod on regression.
 - Every image passes a Trivy `HIGH,CRITICAL --ignore-unfixed` gate in `app.yml`; vendored `npm` / `site-packages` trees that aren't needed at runtime are stripped to keep the bar zero. The same gate also runs as a `trivy fs` pass over `app/`, `scripts/`, and `.azuredevops/` in the Validate stage on every PR, so vuln/misconfig/secret findings surface before merge.
-- Every container image runs as a non-root user — the four first-party images always have had dedicated UIDs; the two layered-on-upstream images (OpenWebUI, LiteLLM) end with an explicit `USER` directive (`owui` uid 1000, and upstream's `1001`) so the runtime process isn't `root`.
+- Every container image runs as a non-root user — the three first-party images always have had dedicated UIDs (`digest` / `rag` uid 10001, `admin` user `node`); the two layered-on-upstream images (OpenWebUI, LiteLLM) end with an explicit `USER` directive (`owui` uid 1000, and upstream's `1001`) so the runtime process isn't `root`.
 
 ## Operational notes
 
