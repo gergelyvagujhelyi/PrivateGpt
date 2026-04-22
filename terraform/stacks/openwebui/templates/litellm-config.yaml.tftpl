@@ -12,6 +12,8 @@ model_list:
     api_key: os.environ/AZURE_API_KEY
     api_version: os.environ/AZURE_API_VERSION
 %{ endif ~}
+  model_info:
+    mode: ${m.purpose}
 %{ endfor ~}
 router_settings:
   routing_strategy: simple-shuffle
