@@ -101,6 +101,14 @@ stages:
             condition: succeededOrFailed()
             inputs: { summaryFileLocation: digest-coverage.xml }
 
+          - script: |
+              set -euo pipefail
+              command -v trivy >/dev/null || brew install trivy
+              trivy fs --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed \
+                --scanners vuln,misconfig,secret \
+                app/ scripts/ .azuredevops/
+            displayName: Trivy fs scan (PR-safe)
+
           - task: AzureCLI@2
             displayName: Validate models.yaml
             inputs:
