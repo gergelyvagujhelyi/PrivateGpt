@@ -5,7 +5,7 @@ import io
 import pytest
 from docx import Document
 
-from src.extract import UnsupportedFormat, extract_text
+from src.extract import MAX_INPUT_BYTES, MAX_OUTPUT_CHARS, InputTooLarge, UnsupportedFormat, extract_text
 
 
 def test_extracts_utf8_text():
@@ -30,3 +30,16 @@ def test_extracts_docx_from_bytes():
 def test_unsupported_format_raises():
     with pytest.raises(UnsupportedFormat):
         extract_text("image.png", "image/png", b"")
+
+
+def test_oversized_input_raises():
+    with pytest.raises(InputTooLarge):
+        extract_text("huge.txt", "text/plain", b"x" * (MAX_INPUT_BYTES + 1))
+
+
+def test_output_truncated_to_max_chars():
+    # Under the input cap but over the output cap — a plain-text file that
+    # decodes to more than MAX_OUTPUT_CHARS characters.
+    payload = b"a" * (MAX_OUTPUT_CHARS + 1000)
+    out = extract_text("big.txt", "text/plain", payload)
+    assert len(out) == MAX_OUTPUT_CHARS

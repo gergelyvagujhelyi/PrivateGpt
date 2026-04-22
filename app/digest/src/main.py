@@ -19,6 +19,7 @@ from pathlib import Path
 import psycopg
 import structlog
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup, escape
 
 from .agent import summarise
 from .email_sender import EmailSender
@@ -90,11 +91,14 @@ def run() -> int:
                 summary = summarise(user_id=str(user["id"]), since=since)
                 unsub_url = f"{public_base_url}/unsubscribe?t={sign_token(str(user['id']))}"
 
+                summary_html = Markup("<br>\n").join(
+                    escape(line) for line in summary.split("\n")
+                )
                 html = template.render(
                     name=user["name"],
                     window=cadence,
                     unsub_url=unsub_url,
-                    summary=summary,
+                    summary_html=summary_html,
                     stats=activity.stats,
                 )
                 sender.send(

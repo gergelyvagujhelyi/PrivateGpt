@@ -37,7 +37,15 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY branding/ /app/backend/static/branding/
 COPY config/openwebui.env /app/openwebui.env
 
-# Non-root, same as upstream; no privilege escalation needed.
+# Upstream ships running as root (their Dockerfile defaults ARG UID=0).
+# Drop to a dedicated non-root user so the runtime container satisfies
+# Dockerfile best-practice scanners (trivy DS-0002) and reduces blast
+# radius if the app is ever compromised.
+RUN useradd -u 1000 -m -s /bin/bash owui \
+  && chown -R owui:owui /app
+
+USER owui
+
 ENV WEBUI_NAME="Client Assistant" \
     ENABLE_SIGNUP=false \
     DEFAULT_USER_ROLE=user \
