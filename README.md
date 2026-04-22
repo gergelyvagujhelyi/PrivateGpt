@@ -316,6 +316,7 @@ Things that aren't obvious from reading the code or a plan:
   - DRS 2.1 `943120` (session fixation when `session_id` appears with no `Referer`) is always disabled — matches every OpenWebUI SPA fetch.
   - `waf_allow_signup_avatar = true` (per-client, default `false`) exempts `profile_image_url` from the XSS rule group for clients that rely on OpenWebUI's local signup flow; the base64 data URI the UI sends as the default avatar would otherwise trip `941130`/`941170`.
 - **`task_model` defaults to `claude-haiku-4-5`.** Override in tfvars when a client doesn't have Claude deployed (e.g. `kdemo/dev.tfvars` points it at `gpt-4o`).
+- **`BYPASS_MODEL_ACCESS_CONTROL=true`** is set stack-wide. In v0.9+ models from admin-added connections are Private by default, so non-admin users land on an empty dropdown. Product segmentation happens at the per-client stack boundary (separate subscription, VNet, Entra tenant) and per-user cost limits live in LiteLLM (`enforce_user_param: true`), so the per-model access-control layer isn't pulling its weight.
 - **Images build `--platform=linux/amd64`** on the Apple-silicon CI agent via QEMU. Slower, but required — Container Apps is amd64-only.
 
 ## Cost controls
