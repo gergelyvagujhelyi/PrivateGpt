@@ -16,26 +16,27 @@ flowchart LR
         subgraph Spoke["Spoke VNet (private)"]
 
             subgraph ACA["Container Apps Environment (internal LB)"]
-                OWUI["OpenWebUI"]
-                LITELLM["LiteLLM proxy<br/>(azure_ai/claude-*)"]
-                LF["Langfuse — self-hosted"]
-                ADMIN["admin UI<br/>(Vite+React+Express, TS)"]
-                DIGEST[/"digest worker (Job)<br/>tool-calling agent"/]
-                RAG[/"RAG ingestion (Job)<br/>chunk → embed → pgvector"/]
+                OWUI["OpenWebUI v0.9.1"]
+                LITELLM["LiteLLM proxy<br/>(azure_ai/claude-* + azure/openai)<br/>config rendered per-client"]
+                LF["Langfuse — self-hosted<br/>(always on)"]
+                ADMIN["admin UI — optional<br/>(Vite+React+Express, TS)"]
+                DIGEST[/"digest worker (Job) — optional<br/>tool-calling Claude Haiku 4.5 agent"/]
+                RAG[/"RAG ingestion (Job) — optional<br/>chunk → embed → pgvector"/]
             end
 
             PG[("Postgres Flexible Server<br/>pgvector · rag_chunks · user_preferences")]
             BLOB[("Blob Storage (CMK, PE)<br/>openwebui-uploads · rag-sources")]
-            KV[("Key Vault")]
+            KV[("Key Vault<br/>incl. persisted WEBUI_SECRET_KEY")]
 
-            subgraph Foundry["Azure AI Foundry"]
+            subgraph Foundry["Azure AI Foundry (per-client subset)"]
                 AIHUB["Foundry hub + project"]
                 AIS["AI Services account"]
                 CLAUDE["Claude Sonnet 4.5 + Haiku 4.5<br/>(MaaS serverless endpoints)"]
-                EMBED["text-embedding-3-large<br/>(OpenAI deployment)"]
+                AOAI["GPT-4o / GPT-4o-mini<br/>(Azure OpenAI deployments)"]
+                EMBED["text-embedding-3-large<br/>(Azure OpenAI deployment)"]
             end
 
-            ACS["Communication Services Email<br/>(digest delivery)"]
+            ACS["Communication Services Email — optional<br/>(digest delivery)"]
             CS["AI Content Safety"]
         end
 
@@ -60,12 +61,13 @@ flowchart LR
 
     OWUI --> PG
     OWUI --> BLOB
-    OWUI -->|OpenAI-compatible| LITELLM
+    OWUI -->|chat + RAG + title-gen<br/>OpenAI-compatible| LITELLM
 
     ADMIN --> PG
     ADMIN -->|traces API| LF
 
     LITELLM -->|azure_ai/claude-*| CLAUDE
+    LITELLM -->|azure/gpt-*| AOAI
     LITELLM -->|azure/embedding| EMBED
     LITELLM --> CS
     LITELLM -->|traces| LF
@@ -100,4 +102,4 @@ flowchart LR
     class PG,BLOB data
     class KV,AAD,CS,FW,DEF,ACS sec
     class LAW,ACR,ACA ops
-    class AIHUB,AIS,CLAUDE,EMBED,Foundry ai
+    class AIHUB,AIS,CLAUDE,AOAI,EMBED,Foundry ai

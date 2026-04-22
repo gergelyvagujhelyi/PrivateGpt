@@ -29,13 +29,14 @@ style: |
 It captures the original architecture we walked through with Andreas.
 Since then the implementation has evolved:
 
-- **Model layer:** Azure OpenAI (GPT-4o) → **Azure AI Foundry + Claude Sonnet/Haiku 4.5 (MaaS)**
-- **Digest summariser:** single prompt → **tool-calling Claude agent** (Langfuse-traced)
-- **RAG:** OpenWebUI's built-in → **custom ingestion pipeline** (Blob → chunk → embed → pgvector with HNSW)
-- **New:** TypeScript/React admin UI on a dedicated Front Door endpoint, Entra SSO, runtime config
+- **Model layer:** Azure OpenAI (GPT-4o) → **Azure AI Foundry** with per-client mix of **Claude Sonnet/Haiku 4.5 (MaaS)** and/or **Azure OpenAI GPT-4o/mini**; `app/models.yaml` ∩ `foundry_deployments` renders the LiteLLM config per-client at Terraform apply time
+- **Digest summariser:** single prompt → **tool-calling Claude Haiku 4.5 agent** (`get_chat_titles`, `get_usage_stats`), full trace captured in Langfuse
+- **RAG:** OpenWebUI's built-in → **custom ingestion pipeline** (Blob → extract → `RecursiveCharacterTextSplitter` → `text-embedding-3-large` via LiteLLM → pgvector with HNSW / `vector_cosine_ops`)
+- **New:** TypeScript/React admin UI on a dedicated Front Door endpoint (Entra SSO, Langfuse-backed dashboard, runtime config served from `/api/config`)
+- **New:** Managed DevOps Pool stack (`terraform/stacks/ci_pool/`) for VNet-injected ephemeral CI agents
 
-Current architecture diagram + details in the repo `README.md`. The rest
-of this deck is retained for the original reasoning and trade-offs.
+Current architecture diagram + operational notes in the repo `README.md`.
+The rest of this deck is retained for the original reasoning and trade-offs.
 
 ---
 
@@ -78,7 +79,7 @@ Speaker notes:
 | Compute | **Azure Container Apps** (internal, VNet) | Right-sized; revisions + canary; no K8s tax |
 | State DB | **Postgres Flexible Server** (private) | OpenWebUI first-class support |
 | Vectors | **pgvector** → escalate to **Azure AI Search** | Start simple; upgrade when retrieval demands |
-| LLM | **Azure OpenAI** + **LiteLLM** proxy *(shipped as: Azure AI Foundry + Claude MaaS + LiteLLM)* | One endpoint for OpenWebUI, many models behind it |
+| LLM | **Azure OpenAI** + **LiteLLM** proxy *(shipped as: Azure AI Foundry hosting Claude MaaS + AOAI, behind LiteLLM)* | One endpoint for OpenWebUI, many models behind it |
 | Files | **Blob Storage** (private endpoint, CMK) | RAG sources + uploads |
 | Secrets | **Key Vault** + Managed Identity | Zero secrets in pipelines/app |
 | Obs (infra) | **Log Analytics + App Insights** | Native, alert rules as code |
@@ -139,19 +140,21 @@ terraform/
 3. Deploy via **Container Apps revision** with traffic split (10 % → 100 %), auto-rollback on health-probe failure
 
 **Model changes as config**
-- `models.yaml` → PR → pipeline validates against AOAI deployments → pushes LiteLLM config
-- **No image rebuild** for model additions/retirements
+- `models.yaml` → PR → pipeline validates against live Foundry / AOAI quota
+- Terraform renders `active models = models.yaml ∩ client.foundry_deployments`
+  into `LITELLM_CONFIG_YAML` at apply time — **no image rebuild** for model additions/retirements
 
 ---
 
 ## 5 · Security & compliance
 
-- **Private-only data plane.** No public endpoints on DB, OpenAI, Blob, Key Vault.
-- **Entra ID SSO** into OpenWebUI; role mapping via groups.
+- **Private-only data plane.** No public endpoints on DB, Foundry / AOAI, Blob, Key Vault (PE-gated; cross-region Foundry deployments fall back to service firewall).
+- **Entra ID SSO** into OpenWebUI and the admin UI; managed identity on every container.
+- **WAF in Prevention mode** (DRS 2.1 + Bot Manager); narrow per-client exceptions for OpenWebUI chat-payload and signup-avatar false positives.
 - **Content Safety** on prompts + responses; prompt-injection guardrails enforced by Langfuse evals in CI.
 - **Audit**: diagnostic settings → Log Analytics → optional SIEM export per client.
 - **Data residency**: region pinned per client; CMK on Storage + Postgres when required.
-- **Supply chain**: pinned upstream image digest, SBOM + vuln scan gate, signed commits.
+- **Supply chain**: pinned upstream image digest (OpenWebUI `v0.9.1`), Trivy HIGH/CRITICAL gate on every build, SBOM attached, signed commits.
 
 ---
 
@@ -161,9 +164,9 @@ terraform/
 - Azure Monitor workbooks, alert rules as code, SLOs per service.
 
 **LLM layer — the one that actually matters**
-- **Langfuse** for traces, token cost, latency, eval datasets
+- **Langfuse** (self-hosted Container App) for traces, token cost, latency, eval datasets — LiteLLM, digest agent, RAG embeddings, and admin UI all feed it
 - Prompt iteration becomes data-driven: compare model/prompt versions before promotion
-- Eval suite runs in CI; failing evals block prod deploys
+- Eval suite runs in CI (`tests/eval/`); failing evals block prod deploys when the eval stage is enabled
 
 **Cost**
 - Budget alerts per client subscription

@@ -1,22 +1,22 @@
 # PrivateGpt — OpenWebUI on Azure
 
 Per-client private AI chat on Azure, scripted end-to-end.
-**OpenWebUI + Azure AI Foundry (Claude) + Langfuse**, delivered through
-Terraform and Azure DevOps, running in a closed VNet.
+**OpenWebUI + Azure AI Foundry (Claude MaaS and/or Azure OpenAI) + Langfuse**,
+delivered through Terraform and Azure DevOps, running in a closed VNet.
 
 ![Architecture](architecture.png)
 
 ## What's in the box
 
-- Private OpenWebUI on **Azure Container Apps**, reachable only via Front Door + WAF.
-- **Azure AI Foundry** with **Claude Sonnet 4.5** + **Claude Haiku 4.5** (MaaS) and `text-embedding-3-large`, all over Private Endpoint.
-- **LiteLLM** sidecar as the single OpenAI-compatible endpoint — per-model routing, per-user budgets.
-- **Langfuse** (self-hosted) for LLM tracing, cost visibility, and CI eval gates.
-- **Postgres Flexible Server** with **pgvector** for both OpenWebUI state and RAG embeddings.
-- **Entra ID** SSO, **Managed Identity** for all service-to-service auth, **Key Vault** for every secret.
+- Private **OpenWebUI** (pinned to upstream `v0.9.1`) on **Azure Container Apps**, reachable only via Front Door + WAF.
+- **Azure AI Foundry** with per-client model mix — any subset of **Claude Sonnet 4.5** / **Claude Haiku 4.5** (MaaS serverless), **GPT-4o** / **GPT-4o-mini** (Azure OpenAI), and **text-embedding-3-large** — all over Private Endpoint when the VNet region allows.
+- **LiteLLM** as the single OpenAI-compatible endpoint — per-model routing, per-user budgets, Langfuse callbacks. Router config is rendered per-client at Terraform apply time from the intersection of `app/models.yaml` and the client's `foundry_deployments`.
+- **Langfuse** (self-hosted Container App) for LLM tracing, cost visibility, and CI eval gates — always deployed; OpenWebUI's RAG + title-gen calls are routed through LiteLLM so they show up in traces too.
+- **Postgres Flexible Server** with **pgvector** for OpenWebUI state, Langfuse, RAG embeddings, and digest preferences.
+- **Entra ID** SSO, **Managed Identity** for all service-to-service auth, **Key Vault** for every secret (including a persisted `WEBUI_SECRET_KEY` so redeploys don't invalidate sessions).
 - Optional, per-client feature flags:
-  - **Scheduled digest emails** (tool-calling Claude agent + Azure Communication Services)
-  - **Custom RAG ingestion** (Blob → chunk → embed → pgvector)
+  - **Scheduled digest emails** (tool-calling Claude Haiku 4.5 agent + Azure Communication Services)
+  - **Custom RAG ingestion** (Blob → extract → chunk → embed → pgvector with HNSW cosine index)
   - **TypeScript/React admin UI** (Entra SSO, Langfuse-backed dashboard) on its own Front Door endpoint
 
 Full rationale and trade-offs in [`slides.pdf`](slides.pdf) (v1 design-review deck — see the note inside for what's changed since).
@@ -25,30 +25,35 @@ Full rationale and trade-offs in [`slides.pdf`](slides.pdf) (v1 design-review de
 
 ```
 terraform/
-  modules/           reusable modules (network, postgres, ai_foundry, container-apps, frontdoor…)
-  stacks/openwebui/  composed product stack
+  modules/           reusable modules (network, postgres, ai_foundry, keyvault,
+                     storage, container_app{,_env,_job}, frontdoor,
+                     communication_services, observability, managed_devops_pool)
+  stacks/openwebui/  composed product stack (+ tests/ and templates/litellm-config.yaml.tftpl)
+  stacks/ci_pool/    optional Managed DevOps Pool stack for VNet-injected CI agents
   envs/<client>/     per-client tfvars + backend config
-  tests/             terraform test suite (mock_provider, plan-only)
 
 app/
-  openwebui/         Dockerfile + config layered on upstream OpenWebUI
-  litellm/           Dockerfile + router config
-  digest/            optional digest worker (Python, Container Apps Job)
+  openwebui/         Dockerfile + config layered on upstream OpenWebUI v0.9.1
+  litellm/           Dockerfile + entrypoint (router config injected at deploy time)
+  digest/            optional digest worker — tool-calling Claude Haiku 4.5 agent (Container Apps Job)
   rag/               optional RAG ingestion worker (Blob → chunk → embed → pgvector)
   admin/             optional admin UI — TypeScript + React + Express (Container App)
   models.yaml        single source of truth → drives Foundry deployments + LiteLLM config
 
 .azuredevops/
   pipelines/
-    infra.yml        fmt · validate · checkov · plan → apply per env
-    app.yml          lint · tests · build · trivy · deploy → eval → canary
+    infra.yml                       fmt · validate · tftest · checkov · plan → apply per env
+    app.yml                         lint · validate models · tests · build · trivy · deploy → (optional) eval → (optional) prod
+    templates/terraform-apply.yml   per-env apply job (OIDC + ADO environment gate)
+    templates/container-app-deploy.yml  per-service Container App revision + canary
 
 scripts/
   onboard_client.sh     scaffold tfvars for a new client
   validate_models.py    schema + live Foundry/AOAI quota check
+  trivy-scan-local.sh   mirror of the Build-stage Trivy gate for local iteration
 
-tests/eval/          Langfuse-backed golden-prompt eval suite (gates prod)
-docker-compose.test.yml    local dev loop: Postgres + Langfuse
+tests/eval/               Langfuse-backed golden-prompt eval suite (gates prod when enabled)
+docker-compose.test.yml   local dev loop: Postgres (pgvector) + Langfuse
 ```
 
 ## Deploy a new client
@@ -76,6 +81,25 @@ git push -u origin onboard/<client>
 
 Open the PR. The infra pipeline runs `plan` for each env and posts it as a
 PR comment. On merge: apply to dev → test → prod with approval gates.
+
+## Model catalogue
+
+Everything about which models a client gets lives in two places:
+
+- **`app/models.yaml`** — the platform-wide catalogue: provider, version, purpose, safety policy.
+- **`terraform/envs/<client>/<env>.tfvars` → `foundry_deployments`** — the subset a given client actually deploys (with per-client SKU/capacity for AOAI).
+
+At `terraform apply`, the stack intersects those two sets, renders
+`templates/litellm-config.yaml.tftpl`, and injects the result as
+`LITELLM_CONFIG_YAML` on the LiteLLM Container App. Adding a model to a
+client is a tfvars change — no image rebuild. `OpenWebUI`'s `TASK_MODEL`
+(used for chat-title/tag generation) is a separate tfvar so each client
+can point it at a model it actually has.
+
+As a worked example, `kdemo/dev.tfvars` runs **GPT-4o + embedding only**
+(Anthropic MaaS isn't available in that region's quota) while
+`kdemo/test.tfvars` and `kdemo/prod.tfvars` run **Claude Sonnet 4.5 +
+Claude Haiku 4.5 + embedding**.
 
 ## Optional features
 
@@ -272,11 +296,27 @@ Grant the relevant ADO project permission to use it and flip the
 
 ## Security posture
 
-- Zero public endpoints on DB, AI Services / Foundry, Blob, Key Vault (Private Endpoints only).
+- Zero public endpoints on DB, AI Services / Foundry, Blob, Key Vault (Private Endpoints only). Foundry PEs are gated by `foundry_private_endpoints_enabled` — leave disabled when `foundry_location` differs from the VNet region (cross-region PE for these resource types is not supported).
 - Managed Identities for every service-to-service auth path; no app secrets in pipelines.
-- WAF (OWASP + Bot Manager) in Prevention mode on Front Door (shared across the public endpoints for OpenWebUI and the admin UI).
+- **WAF in Prevention mode** on Front Door (DRS 2.1 + Bot Manager 1.1), shared across the OpenWebUI and admin-UI endpoints. Two rule-level exceptions are always applied and one is per-client opt-in — see *Operational notes* below.
 - Customer-managed keys and geo-redundancy available as feature flags.
-- Content Safety on prompts and responses; golden-prompt evals block prod on regression.
+- Content Safety on prompts and responses via LiteLLM; golden-prompt evals block prod on regression.
+- Every image passes a Trivy `HIGH,CRITICAL --ignore-unfixed` gate in `app.yml`; vendored `npm` / `site-packages` trees that aren't needed at runtime are stripped to keep the bar zero.
+
+## Operational notes
+
+Things that aren't obvious from reading the code or a plan:
+
+- **OpenWebUI `v0.9.1` is a forced pin.** v0.8.x overwrites the singular `OPENAI_API_BASE_URL` / `OPENAI_API_KEY` on boot with `api.openai.com`, leaving the Models page empty — the stack sets the **plural** `OPENAI_API_BASE_URLS` / `OPENAI_API_KEYS` instead, which v0.9.1 honours. `RAG_OPENAI_API_BASE_URL` points at LiteLLM for the same reason.
+- **`WEBUI_SECRET_KEY` is persisted in Key Vault.** OpenWebUI defaults to a random per-boot session-cookie key; without persistence, every redeploy logs every user out and produces a stale-cookie → 401 → frontend JSON parse cascade.
+- **Langfuse is mandatory**, not a flag. LiteLLM, the digest worker, the RAG worker, and the admin UI all depend on its trace API.
+- **LiteLLM runs with `--num_workers 1`** at the default 1 Gi memory allocation, with a `/health/liveliness` startup probe (cold start is ~22 s once Langfuse callbacks initialise). Scale by adding Container App replicas, not workers.
+- **WAF rule exceptions:**
+  - DRS 2.1 `941380` (AngularJS template injection on `{{USER_NAME}}`) is always disabled — categorical false positive on OpenWebUI chat payloads.
+  - DRS 2.1 `943120` (session fixation when `session_id` appears with no `Referer`) is always disabled — matches every OpenWebUI SPA fetch.
+  - `waf_allow_signup_avatar = true` (per-client, default `false`) exempts `profile_image_url` from the XSS rule group for clients that rely on OpenWebUI's local signup flow; the base64 data URI the UI sends as the default avatar would otherwise trip `941130`/`941170`.
+- **`task_model` defaults to `claude-haiku-4-5`.** Override in tfvars when a client doesn't have Claude deployed (e.g. `kdemo/dev.tfvars` points it at `gpt-4o`).
+- **Images build `--platform=linux/amd64`** on the Apple-silicon CI agent via QEMU. Slower, but required — Container Apps is amd64-only.
 
 ## Cost controls
 
