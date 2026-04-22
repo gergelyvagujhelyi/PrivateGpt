@@ -31,7 +31,7 @@ Since then the implementation has evolved:
 
 - **Model layer:** Azure OpenAI (GPT-4o) → **Azure AI Foundry** with per-client mix of **Claude Sonnet/Haiku 4.5 (MaaS)** and/or **Azure OpenAI GPT-4o/mini**; `app/models.yaml` ∩ `foundry_deployments` renders the LiteLLM config per-client at Terraform apply time
 - **Digest summariser:** single prompt → **tool-calling Claude Haiku 4.5 agent** (`get_chat_titles`, `get_usage_stats`), full trace captured in Langfuse
-- **RAG:** OpenWebUI's built-in → **custom ingestion pipeline** (Blob → extract → `RecursiveCharacterTextSplitter` → `text-embedding-3-large` via LiteLLM → pgvector with HNSW / `vector_cosine_ops`)
+- **RAG:** OpenWebUI's built-in → **custom ingestion pipeline** (Blob → extract → `RecursiveCharacterTextSplitter` → `text-embedding-3-large` via LiteLLM → pgvector `HALFVEC(3072)` with HNSW / `halfvec_cosine_ops`)
 - **New:** TypeScript/React admin UI on a dedicated Front Door endpoint (Entra SSO, Langfuse-backed dashboard, runtime config served from `/api/config`)
 - **New:** Managed DevOps Pool stack (`terraform/stacks/ci_pool/`) for VNet-injected ephemeral CI agents
 
