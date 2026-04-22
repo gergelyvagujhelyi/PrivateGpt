@@ -277,6 +277,12 @@ module "openwebui" {
     # LiteLLM is the only upstream — Ollama probes would fail and surface
     # "Failed to fetch models" on the admin Models page.
     { name = "ENABLE_OLLAMA_API", value = "false" },
+    # Models from admin-added connections default to Private in v0.9+, so
+    # non-admin users see an empty chat dropdown. Segmentation in this
+    # product is per-client (separate subscription + VNet + Entra tenant)
+    # and per-user cost limits already live in LiteLLM, so the per-model
+    # access-control layer isn't pulling its weight — turn it off globally.
+    { name = "BYPASS_MODEL_ACCESS_CONTROL", value = "true" },
     { name = "WEBUI_AUTH", value = "true" },
     { name = "ENABLE_OAUTH_SIGNUP", value = "true" },
     { name = "OAUTH_PROVIDER_NAME", value = "Microsoft" },
