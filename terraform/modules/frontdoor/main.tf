@@ -178,21 +178,30 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "this" {
     # ("Managed rule set contains duplicate group overrides"), so all XSS
     # tweaks live in one block.
     #
-    # Rule 941380 scores `{{USER_NAME}}` placeholders in OpenWebUI chat
-    # payloads as AngularJS client-side template injection — categorical
-    # false positive, always disabled.
+    # Rule 941380 scores `{{USER_NAME}}`-style JSON keys in OpenWebUI
+    # chat payloads as AngularJS client-side template injection — those
+    # keys are prompt-template placeholders, not code. DRS 2.1 silently
+    # ignores rule-level `enabled = false` against the anomaly-scoring
+    # engine (rule still contributes its 5-point severity, observed in
+    # FrontDoorWebApplicationFirewallLog), so keep it active and use a
+    # rule-scoped exclusion for keys starting with `{{` instead.
     #
-    # The exclusion is per-client opt-in: OpenWebUI's signup POST carries
-    # a base64 data: URI in profile_image_url, which XSS rules 941130/
-    # 941170 score as injection (combined ≥ 10 → 949110 blocks with 403).
+    # The signup exclusion is per-client opt-in: OpenWebUI's signup POST
+    # carries a base64 data: URI in profile_image_url, which XSS rules
+    # 941130/941170 score as injection (combined ≥ 10 → 949110 blocks).
     # Scoped to XSS only so SQLi / RCE / LFI keep evaluating the field.
     override {
       rule_group_name = "XSS"
 
       rule {
         rule_id = "941380"
-        action  = "Log"
-        enabled = false
+        action  = "AnomalyScoring"
+        enabled = true
+        exclusion {
+          match_variable = "RequestBodyJsonArgNames"
+          operator       = "StartsWith"
+          selector       = "{{"
+        }
       }
 
       dynamic "exclusion" {
@@ -206,13 +215,20 @@ resource "azurerm_cdn_frontdoor_firewall_policy" "this" {
     }
 
     # Rule 943120 flags `session_id` JSON keys with no Referer as session
-    # fixation — always the case for OpenWebUI's SPA fetch calls.
+    # fixation — always the case for OpenWebUI's SPA fetch calls. Same
+    # DRS 2.1 anomaly-scoring disable caveat as 941380, so keep active
+    # and exclude the specific key.
     override {
       rule_group_name = "FIX"
       rule {
         rule_id = "943120"
-        action  = "Log"
-        enabled = false
+        action  = "AnomalyScoring"
+        enabled = true
+        exclusion {
+          match_variable = "RequestBodyJsonArgNames"
+          operator       = "Equals"
+          selector       = "session_id"
+        }
       }
     }
   }
