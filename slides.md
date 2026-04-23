@@ -58,7 +58,7 @@ The rest of this deck is retained for the original reasoning and trade-offs.
 
 ## 2 · Target architecture
 
-![w:1050](architecture.png)
+![w:1150](architecture.png)
 
 <!--
 Speaker notes:
@@ -84,7 +84,7 @@ Speaker notes:
 | Secrets | **Key Vault** + Managed Identity | Zero secrets in pipelines/app |
 | Obs (infra) | **Log Analytics + App Insights** | Native, alert rules as code |
 | Obs (LLM) | **Langfuse** (self-hosted Container App) | Traces, token cost, eval gates |
-| Network | Hub-spoke VNet, Private Endpoints, **Azure Firewall** egress | Satisfies "closed environment" |
+| Network | VNet-injected Container Apps + Private Endpoints (DB, Blob, KV, Foundry) | Closed data plane; public endpoints disabled on backing services |
 
 ---
 
@@ -102,6 +102,23 @@ Speaker notes:
 
 **Azure OpenAI only vs LiteLLM in front**
 - LiteLLM adds one hop, buys us multi-model routing, per-user quotas, and a clean seam for adding non-Azure models later if policy allows.
+
+---
+
+## 2 · Rejected alternatives
+
+From the brief: *"alternatives are welcome"*. Here's what I considered and chose against — every row is a **per-client decision**, not a platform absolute.
+
+| Rejected | Chose | Why not | Revisit when |
+|---|---|---|---|
+| **AKS** | Container Apps | K8s ops cost doesn't pay back for stateless containers; no team muscle to amortise | Client already runs K8s at scale |
+| **Bicep** | Terraform | No technical win; you already run Terraform — switching costs are real, not theoretical | Client mandates Microsoft-native IaC |
+| **Pulumi** | Terraform | Overkill for this scope; HCL + modules is enough | TS-first team with heavy contract-testing needs |
+| **Shared multi-tenant** | Per-client stack | Data isolation, blast-radius control, per-client compliance posture; IaC makes duplication cheap | Many small clients where per-client cost dominates |
+| **Azure AI Search (day 1)** | pgvector | One less service, good enough for most corpora, one-module swap when it isn't | Retrieval quality is the bottleneck; hybrid BM25 + vector needed |
+| **AOAI direct (no LiteLLM)** | LiteLLM in front | One OAI-compatible seam → multi-model routing, per-user quotas, non-Azure optionality — worth the extra hop | Single model forever, no quota policy, no non-Azure ambition |
+
+**Stance:** boring defaults, escape hatch named on every line.
 
 ---
 

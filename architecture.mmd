@@ -1,8 +1,15 @@
+---
+config:
+  layout: elk
+  elk:
+    nodePlacementStrategy: NETWORK_SIMPLEX
+---
 flowchart LR
     User([User])
     Admin([Admin/User])
 
     subgraph Edge["Azure Front Door + WAF"]
+        direction TB
         FD["Main endpoint<br/>(OpenWebUI)"]
         FDA["Admin endpoint<br/>(admin UI)"]
     end
@@ -11,11 +18,14 @@ flowchart LR
         AAD["Entra ID — OIDC SSO"]
     end
 
-    subgraph Azure["Azure Subscription (per client) — Hub-Spoke VNet"]
+    subgraph Azure["Azure Subscription (per client)"]
+        direction TB
 
-        subgraph Spoke["Spoke VNet (private)"]
+        subgraph Spoke["VNet — private, internal LB + private endpoints"]
+            direction LR
 
             subgraph ACA["Container Apps Environment (internal LB)"]
+                direction TB
                 OWUI["OpenWebUI v0.9.1"]
                 LITELLM["LiteLLM proxy<br/>(azure_ai/claude-* + azure/openai)<br/>config rendered per-client"]
                 LF["Langfuse — self-hosted<br/>(always on)"]
@@ -24,11 +34,15 @@ flowchart LR
                 RAG[/"RAG ingestion (Job) — optional<br/>chunk → embed → pgvector"/]
             end
 
-            PG[("Postgres Flexible Server<br/>pgvector · rag_chunks · user_preferences")]
-            BLOB[("Blob Storage (CMK, PE)<br/>openwebui-uploads · rag-sources")]
-            KV[("Key Vault<br/>incl. persisted WEBUI_SECRET_KEY")]
+            subgraph Data["Data plane"]
+                direction TB
+                PG[("Postgres Flexible Server<br/>pgvector · rag_chunks · user_preferences")]
+                BLOB[("Blob Storage (CMK, PE)<br/>openwebui-uploads · rag-sources")]
+                KV[("Key Vault<br/>incl. persisted WEBUI_SECRET_KEY")]
+            end
 
-            subgraph Foundry["Azure AI Foundry (per-client subset)"]
+            subgraph Foundry["Azure AI Foundry (per-client subset)<br/>Content Safety: RAI policy 'Microsoft.DefaultV2' per AOAI deployment"]
+                direction TB
                 AIHUB["Foundry hub + project"]
                 AIS["AI Services account"]
                 CLAUDE["Claude Sonnet 4.5 + Haiku 4.5<br/>(MaaS serverless endpoints)"]
@@ -37,14 +51,10 @@ flowchart LR
             end
 
             ACS["Communication Services Email — optional<br/>(digest delivery)"]
-            CS["AI Content Safety"]
-        end
-
-        subgraph Hub["Hub VNet"]
-            FW["Azure Firewall — egress"]
         end
 
         subgraph Ops["Platform / Ops"]
+            direction TB
             LAW["Log Analytics + App Insights"]
             ACR["Azure Container Registry"]
             DEF["Defender for Cloud + Policy"]
@@ -69,7 +79,6 @@ flowchart LR
     LITELLM -->|azure_ai/claude-*| CLAUDE
     LITELLM -->|azure/gpt-*| AOAI
     LITELLM -->|azure/embedding| EMBED
-    LITELLM --> CS
     LITELLM -->|traces| LF
 
     DIGEST --> PG
@@ -87,7 +96,6 @@ flowchart LR
     DIGEST -. Managed Identity .-> KV
     RAG   -. Managed Identity .-> KV
 
-    ACA -->|egress| FW
     ACA --> LAW
     ACR -->|image pull| ACA
     DEF -.-> Azure
@@ -100,6 +108,6 @@ flowchart LR
 
     class OWUI,LITELLM,LF,ADMIN,DIGEST,RAG,FD,FDA svc
     class PG,BLOB data
-    class KV,AAD,CS,FW,DEF,ACS sec
+    class KV,AAD,DEF,ACS sec
     class LAW,ACR,ACA ops
     class AIHUB,AIS,CLAUDE,AOAI,EMBED,Foundry ai
