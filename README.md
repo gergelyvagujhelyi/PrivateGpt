@@ -69,6 +69,22 @@ Everything after the one-time prereqs fits in a single PR.
 4. Register an **Entra app** for OpenWebUI SSO; client-id + secret go into Key Vault after the first apply.
 5. If enabling the admin UI: register a **second Entra app** for the admin SPA + API (its client id goes into `entra_admin_app_client_id` in tfvars). After first apply, set the admin app's reply URL to the Terraform `admin_public_url` output.
 
+### Platform bootstrap (once per platform tenant)
+
+Before the first client can deploy, the shared platform resources must exist:
+`rg-owui-platform`, the tfstate storage account (AAD-only, container `tfstate`),
+the shared ACR, and the budget-driven killswitch (automation runbook + action
+group + consumption budget that nukes every `rg-owui-*` except the platform RG
+when the monthly budget is forecast or actually exceeded).
+
+```bash
+SUBSCRIPTION_ID=<uuid> BUDGET_AMOUNT_SEK=500 ./scripts/bootstrap_platform.sh
+# writes .env.deploy with STATE_SA / ACR_NAME for the envs/*/backend.hcl files
+```
+
+Idempotent on re-run (reuses the random suffix captured in `.env.deploy`). Not
+in Terraform because it hosts Terraform's own state — chicken/egg.
+
 ### The PR
 
 ```bash
